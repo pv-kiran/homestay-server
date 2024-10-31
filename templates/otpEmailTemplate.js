@@ -1,7 +1,7 @@
 const generateOtpEmailTemplate = (name, otp) => {
     return `
         <div style="font-family: Arial, sans-serif; color: #333;">
-            <h2 style="color: #2c3e50;">Welcome to Our Service!</h2>
+            <h2 style="color: #2c3e50;">Welcome to BeStays!</h2>
             <p>Dear ${name},</p>
             
             <p>We received a request to create an account using this email address. To complete your registration, please use the following One-Time Password (OTP) to verify your email address:</p>
@@ -13,8 +13,9 @@ const generateOtpEmailTemplate = (name, otp) => {
             <p><strong>Note:</strong> This OTP is valid for <strong>2 minutes</strong> from the time you received this email.</p>
             
             <p>If you did not request this code, please ignore this email or contact our support team if you have any concerns.</p>
-            
+            <br>
             <p>Thank you for choosing us!</p>
+            <br>
             <p>Best Regards,<br>BeStays</p>
             
             <hr style="border: none; border-top: 1px solid #eee;">

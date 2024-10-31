@@ -1,6 +1,4 @@
 const Admin = require("../models/admin");
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const {transporter} = require('../utils/emailHelper');
 const {validateAdminLogin, validateAdminSignup, validateOtp} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
@@ -48,7 +46,10 @@ const adminSignUp = async (req,res) => {
         await transporter.sendMail(mailOptions);
         
         return res.status(201).json({
-            admin: newAdmin,
+            admin: {
+                _id: newAdmin._id,
+                email: newAdmin.email
+            },
             message: 'Signup successful! Please check your email for OTP verification.',
         });
 
@@ -66,7 +67,6 @@ const adminSignUp = async (req,res) => {
             return res.status(500).json({ message: 'An unexpected error occurred' });
         }
     }
-    // res.redirect('/user/signin');
 }
 
 
@@ -80,7 +80,7 @@ const adminOtpVerify = async (req,res) => {
         });
     }
 
-    const {email , otp} = req.body ;
+    const {email, otp} = req.body ;
     try {
         const admin = await Admin.find({ email: email });
         
@@ -100,14 +100,8 @@ const adminOtpVerify = async (req,res) => {
                         success: true,
                         message: "OTP already expired !"
                     })
-                        // const isVerified = true ;
-                        // const errorMessage = 'OTP is already expired'
-                        // res.render('verifyotp' , {email: email , isVerified: isVerified , errMessage:errorMessage});
                 }
         } else {
-            // const isVerified = true ;
-            // const errorMessage = 'OTP is invalid'
-            // res.render('verifyotp', { email: email, isVerified: isVerified, errMessage: errorMessage });
             return res.json({
                 success: true,
                 message: "Invalid OTP !"
@@ -155,7 +149,11 @@ const adminLogin = async (req, res) => {
 
             return res.status(200).cookie('token' , token , options).json({
                 success: true ,
-                user: adminExists,
+                admin: {
+                    _id: adminExists._id,
+                    email: adminExists.email,
+                    token: token
+                },
                 message: 'Admin Login Successful'
             });
                 
