@@ -1,20 +1,7 @@
 const Admin = require("../models/admin");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASSWORD
-    }
-});
-
+const {transporter} = require('../utils/emailHelper');
 
 const adminSignUp = async (req,res) => {
     const {name , email ,password} = req.body ;
