@@ -31,7 +31,12 @@ app.get("/", (req, res) => {
   res.send("Hello");
 });
 
-// establishing connestion to database
+const authRoutes = require("./routes/authentication");
+
+
+app.use("/api/auth", authRoutes);
+
+// establishing connection to database
 
 const connect = async () => {
   try {
