@@ -2,20 +2,30 @@ const Admin = require("../models/admin");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const {transporter} = require('../utils/emailHelper');
+const {validateAdminLogin, validateAdminSignup} = require('../utils/validationHelper');
+const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
+const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
+const {getToken, verifyToken} = require('../utils/jwtHelper');
 
 const adminSignUp = async (req,res) => {
-    const {name , email ,password} = req.body ;
     try {
-
-        const admin = await Admin.find({email: email});
-        if(admin.length >= 1){
-           // return already registered message
+        const {error} = validateAdminSignup.validate(req.body);
+        if(error) {
+            return res.status(400).json({
+                message: error.details[0]?.message
+            })
+        }
+        const {name, email, password} = req.body ;
+        const adminExists = await Admin.findOne({email: email});
+        if(adminExists){
+            return res.status(400).json({
+                message: 'Email id already exists !'
+            })
         }
 
-        const encPassword = await bcrypt.hash(password , 10);
-
-        const otp = 1000 + Math.floor(Math.random() * 9000);
-        const otpExpiry = Date.now() + 2*60*1000;
+        const encPassword = await getHashedPassword(password);
+        const otp = generateOtp();
+        const otpExpiry = getOtpExpiry();
         
         const newAdmin = await Admin.create({
             name: name ,
@@ -24,7 +34,6 @@ const adminSignUp = async (req,res) => {
             otp: otp ,
             otpExpiry: otpExpiry
         });
-
 
         // OTP Send
         const mailOptions = {
@@ -40,11 +49,9 @@ const adminSignUp = async (req,res) => {
             admin: newAdmin,
         });
 
-
     } catch(e) {
         console.log(e);
     }
-    
     // res.redirect('/user/signin');
 }
 
@@ -53,7 +60,6 @@ const adminOtpVerify = async (req,res) => {
 
     const {email , otp} = req.body ;
     try {
-
         const admin = await Admin.find({ email: email });
         
         if (parseInt(otp) === admin[0].otp) {
@@ -63,15 +69,14 @@ const adminOtpVerify = async (req,res) => {
                         admin[0].otp = undefined;
                         admin[0].otpExpiry = undefined;
                         await admin[0].save();
-                    // res.redirect('/user/signin');
                     return res.json({
                         success: true,
-                        message: "otp verified succussfully"
+                        message: "OTP verification successful"
                     })
                 } else {
                     return res.json({
                         success: true,
-                        message: "OTP is already expired"
+                        message: "OTP already expired !"
                     })
                         // const isVerified = true ;
                         // const errorMessage = 'OTP is already expired'
@@ -83,54 +88,49 @@ const adminOtpVerify = async (req,res) => {
             // res.render('verifyotp', { email: email, isVerified: isVerified, errMessage: errorMessage });
             return res.json({
                 success: true,
-                message: "OTP is invalid"
+                message: "Invalid OTP !"
             })
         }
-
-
     } catch(e) {
         console.log(e);
     }
-    
 }
 
 
 const adminLogin = async (req, res) => {
-    const { email, password } = req.body;
-
+    
     try {
 
-        const admin = await Admin.findOne({ email: email });
+        const {error} = validateAdminLogin.validate(req.body);
+        if(error) {
+            return res.status(400).json({
+                message: error.details[0]?.message
+            })
+        }
 
-        if (admin) {
+        const { email, password } = req.body;   
+        const adminExists = await Admin.findOne({ email: email });
 
-            let isCorrectPassword = await bcrypt.compare(password, admin.password);
+        if (adminExists) {
+            const isCorrectPassword = await verifyPassword(password, adminExists.password);
             if (isCorrectPassword) {
-
-                const token =  jwt.sign(
                 
-                    { userId: admin._id, email: email },
-                    process.env.SECRET_KEY,
-                    {
-                        expiresIn: "2h"
-                    }
+                const token = await getToken(adminExists._id, email);
 
-                );
+                adminExists.password = undefined;
+                adminExists.token = token;
 
-            admin.password = undefined;
-            admin.token = token;
-
-            
-            const options = {
-                expires: new Date(
-                    Date.now() + 3*24*60*60*1000
-                ) ,
-                httpOnly: true
-            }
+                const options = {
+                    expires: new Date(
+                        Date.now() + 3*24*60*60*1000
+                    ) ,
+                    httpOnly: true
+                }
 
             return res.status(200).cookie('token' , token , options).json({
                 success: true ,
-                user: admin
+                user: adminExists,
+                message: 'Admin Login Successful'
             });
                 
             } else {
@@ -144,7 +144,6 @@ const adminLogin = async (req, res) => {
                 errorInfo: `We didn't recoganize this email`
             })
         }
-
     } catch (err) {
         console.log(err)
         res.status(500).json({
