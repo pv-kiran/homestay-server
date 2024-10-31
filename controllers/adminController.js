@@ -2,20 +2,22 @@ const Admin = require("../models/admin");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const {transporter} = require('../utils/emailHelper');
-const {validateAdminLogin, validateAdminSignup} = require('../utils/validationHelper');
+const {validateAdminLogin, validateAdminSignup, validateOtp} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
-const {getToken, verifyToken} = require('../utils/jwtHelper');
+const {getToken} = require('../utils/jwtHelper');
+const {generateOtpEmailTemplate} = require('../templates/otpEmailTemplate');
 
 const adminSignUp = async (req,res) => {
+
+    const {error} = validateAdminSignup.validate(req.body);
+    if(error) {
+        return res.status(400).json({
+            message: error.details[0]?.message
+        })
+    }
+    const {name, email, password} = req.body ;
     try {
-        const {error} = validateAdminSignup.validate(req.body);
-        if(error) {
-            return res.status(400).json({
-                message: error.details[0]?.message
-            })
-        }
-        const {name, email, password} = req.body ;
         const adminExists = await Admin.findOne({email: email});
         if(adminExists){
             return res.status(400).json({
@@ -40,23 +42,43 @@ const adminSignUp = async (req,res) => {
             from: 'admin@gmail.com',
             to: `${email}`,
             subject: 'OTP VERIFICATION',
-            html: `<p>Enter <b> ${otp} </b> in the app to verify your email address and complete the signup process. This code expires in 2 minutes</p>`
+            html: generateOtpEmailTemplate(name, otp)
         };
 
         await transporter.sendMail(mailOptions);
         
         return res.status(201).json({
             admin: newAdmin,
+            message: 'Signup successful! Please check your email for OTP verification.',
         });
 
     } catch(e) {
-        console.log(e);
+        if (e.name === 'ValidationError') {
+            return res.status(400).json({ message: 'Invalid input data' });
+        } else if (e.name === 'MongoError') {
+            return res.status(500).json({ message: 'Database error occurred' });
+        } else if (e.message.includes('getHashedPassword')) {
+            return res.status(500).json({ message: 'Error in password hashing' });
+        } else if (e.message.includes('sendMail')) {
+            return res.status(500).json({ message: 'Error sending OTP email' });
+        } else {
+            console.error(e);
+            return res.status(500).json({ message: 'An unexpected error occurred' });
+        }
     }
     // res.redirect('/user/signin');
 }
 
 
 const adminOtpVerify = async (req,res) => {
+
+    const { error } = validateOtp.validate(req.body);
+        if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message 
+        });
+    }
 
     const {email , otp} = req.body ;
     try {
@@ -93,28 +115,32 @@ const adminOtpVerify = async (req,res) => {
         }
     } catch(e) {
         console.log(e);
+        return res.status(500).json({
+            success: false,
+            message: "An unexpected error occurred"
+        });
     }
 }
 
 
 const adminLogin = async (req, res) => {
     
+    const {error} = validateAdminLogin.validate(req.body);
+    if(error) {
+        return res.status(400).json({
+            message: error.details[0]?.message
+        })
+    }
+
+    const { email, password } = req.body;   
+
     try {
-
-        const {error} = validateAdminLogin.validate(req.body);
-        if(error) {
-            return res.status(400).json({
-                message: error.details[0]?.message
-            })
-        }
-
-        const { email, password } = req.body;   
         const adminExists = await Admin.findOne({ email: email });
 
         if (adminExists) {
             const isCorrectPassword = await verifyPassword(password, adminExists.password);
             if (isCorrectPassword) {
-                
+
                 const token = await getToken(adminExists._id, email);
 
                 adminExists.password = undefined;
@@ -141,7 +167,7 @@ const adminLogin = async (req, res) => {
             
         } else {
             return res.status(404).json({
-                errorInfo: `We didn't recoganize this email`
+                errorInfo: `We didn't recognize this email`
             })
         }
     } catch (err) {

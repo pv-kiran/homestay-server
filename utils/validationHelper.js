@@ -37,8 +37,30 @@ const validateAdminLogin = Joi.object({
         })
 })
 
+const validateOtp = Joi.object({
+    email: Joi.string()
+        .email()
+        .required()
+        .messages({
+            'string.empty': 'Email is required',
+            'string.email': 'Invalid email format'
+        }),
+    otp: Joi.number()
+        .integer()
+        .min(1000)
+        .max(9999)
+        .required()
+        .messages({
+            'number.base': 'OTP must be a number',
+            'number.min': 'OTP must be a 4-digit number',
+            'number.max': 'OTP must be a 4-digit number',
+            'any.required': 'OTP is required'
+        })
+})
+
 
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
+    validateOtp,
 }
