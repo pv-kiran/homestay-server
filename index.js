@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
   res.send("Hello");
 });
 
-const authRoutes = require("./routes/authentication");
+const authRoutes = require("./routes/adminRoute");
 
 
 app.use("/api/auth", authRoutes);
