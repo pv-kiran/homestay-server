@@ -42,7 +42,7 @@ const connect = async () => {
   try {
     await connectDB();
     let server = app.listen(PORT, () => {
-      console.log(`App is running @ ${PORT}`);
+      console.log(`Server is running @ ${PORT}`);
     });
     return server;
   } catch (err) {
