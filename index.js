@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
   res.send("Hello");
 });
 
-const authRoutes = require("./routes/authentication");
+const authRoutes = require("./routes/adminRoute");
 
 
 app.use("/api/auth", authRoutes);
@@ -42,7 +42,7 @@ const connect = async () => {
   try {
     await connectDB();
     let server = app.listen(PORT, () => {
-      console.log(`App is running @ ${PORT}`);
+      console.log(`Server is running @ ${PORT}`);
     });
     return server;
   } catch (err) {
