@@ -1,11 +1,15 @@
 const Admin = require("../models/admin");
+const Category = require('../models/category');
 const {transporter} = require('../utils/emailHelper');
-const {validateAdminLogin, validateAdminSignup, validateOtp} = require('../utils/validationHelper');
+const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
 const {generateOtpEmailTemplate} = require('../templates/otpEmailTemplate');
+const {cloudinary} = require('../utils/cloudinaryHelper');
+const upload = require('../utils/multerHelper');
 
+//ADMIN SIGNUP
 const adminSignUp = async (req,res) => {
 
     const {error} = validateAdminSignup.validate(req.body);
@@ -46,6 +50,7 @@ const adminSignUp = async (req,res) => {
         await transporter.sendMail(mailOptions);
         
         return res.status(201).json({
+            success: true ,
             admin: {
                 _id: newAdmin._id,
                 email: newAdmin.email
@@ -69,7 +74,7 @@ const adminSignUp = async (req,res) => {
     }
 }
 
-
+//ADMIN OTP VERIFICATION
 const adminOtpVerify = async (req,res) => {
 
     const { error } = validateOtp.validate(req.body);
@@ -116,7 +121,7 @@ const adminOtpVerify = async (req,res) => {
     }
 }
 
-
+//ADMIN LOGIN
 const adminLogin = async (req, res) => {
     
     const {error} = validateAdminLogin.validate(req.body);
@@ -177,8 +182,137 @@ const adminLogin = async (req, res) => {
 
 }
 
+//ADMIN CATEGORY MANAGEMENT - ADD
+const addCategory = async (req, res) => {
+    upload.single('iconUrl')(req, res, async (error) => { 
+        if (error) {
+            return res.status(500).json({
+                message: 'Icon upload error'
+            });
+        }
+        try {
+            const { error } = validateCategory.validate(req.body);
+            if (error) {
+              return res.status(400).json({ message: error.details[0].message });
+            }
+            const existingCategory = await Category.findOne({ categoryName: req.body.categoryName, isDisabled: false });
+            if (existingCategory) {
+                return res.status(400).json({ message: 'Category with this name already exists' });
+            }
+
+            let iconUrl = '';
+            if (req.file) {
+                const icon = await cloudinary.uploader.upload(req.file.path);
+                iconUrl = icon.secure_url;
+            }
+
+            const newCategory = new Category({
+                categoryName: req.body.categoryName,
+                iconUrl: iconUrl,
+            });
+
+            await newCategory.save();
+            res.status(201).json({
+                success: true,
+                message: 'Category created successfully',
+                category: newCategory
+            });
+        } catch (error) {
+            return res.status(500).json({
+                message: 'Internal server error'
+            });
+        }
+    });
+};
+
+
+//ADMIN CATEGORY MANAGEMENT - UPDATE
+const updateCategory = async (req, res) => {
+    upload.single('iconUrl')(req, res, async (uploadError) => {
+        if (uploadError) {
+          return res.status(500).json({ message: 'Icon upload error' });
+        }
+    
+        try {
+          const { error } = validateCategory.validate(req.body);
+          if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+          }
+    
+          const { categoryId } = req.params;
+    
+          // Check if a category with the same name exists (excluding the current category)
+          const existingCategory = await Category.findOne({
+            categoryName: req.body.categoryName,
+            _id: { $ne: categoryId },
+            isDisabled: false,
+          });
+          if (existingCategory) {
+            return res.status(400).json({ message: 'Category with this name already exists' });
+          }
+    
+          // Handle icon upload if a new file is provided
+          let iconUrl = req.body.iconUrl; // default to existing iconUrl
+          if (req.file) {
+            try {
+              const result = await cloudinary.uploader.upload(req.file.path);
+              iconUrl = result.secure_url;
+            } catch (cloudinaryError) {
+              return res.status(500).json({ message: 'Error in uploading icon to Cloudinary' });
+            }
+          }
+          // Update the category
+          const updatedCategory = await Category.findByIdAndUpdate(
+            categoryId,
+            { categoryName: req.body.categoryName, iconUrl: iconUrl },
+            { new: true }
+          );
+    
+          if (!updatedCategory) {
+            return res.status(404).json({ message: 'Category not found' });
+          }
+    
+          res.status(200).json({
+            success:true,
+            message: 'Category updated successfully',
+            category: updatedCategory,
+          });
+        } catch (error) {
+          res.status(500).json({ message: 'Internal server error' });
+        }
+    });
+};
+
+
+//ADMIN CATEGORY MANAGEMENT - DISABLE
+const disableCategory = async (req, res) => {
+    try {
+        const {categoryId} = req.params;
+        const disabledCategory = await Category.findByIdAndUpdate(
+            categoryId,
+            { isDisabled: true },
+            { new: true }
+        );
+
+        if(!disabledCategory) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+        res.status(200).json({ 
+            success: true,
+            message: 'Category disabled successfully', 
+            category: disabledCategory 
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
 module.exports = {
     adminSignUp,
     adminOtpVerify,
-    adminLogin
-};
+    adminLogin,
+    addCategory,
+    updateCategory,
+    disableCategory,
+}
