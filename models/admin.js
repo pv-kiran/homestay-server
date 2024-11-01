@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const adminSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
     email: {
         type: String,
         required: true
@@ -18,12 +22,8 @@ const adminSchema = new mongoose.Schema({
     },
     otpExpiry: {
         type: Date
-    } ,
-    token: {
-        type: String
-    }
+    },
 })
 
-const Admin = mongoose.model('Admin', adminSchema);
 
-module.exports = Admin;
+module.exports = mongoose.model('Admin', adminSchema);;
