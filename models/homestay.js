@@ -58,6 +58,14 @@ const homestaySchema = new mongoose.Schema({
         },
     },
     amenities: [String], 
+    noOfRooms: {
+        type: Number,
+        required: true,
+    },
+    noOfBathRooms: {
+        type: Number,
+        required: true,
+    },
     pricePerNight: {
         type: Number,
         required: true,
