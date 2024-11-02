@@ -60,9 +60,24 @@ const validateOtp = Joi.object({
         })
 })
 
+const validateCategory = Joi.object({
+    categoryName: Joi.string()
+        .min(3)
+        .max(30)
+        .required()
+        .messages({
+            'string.base': 'Category name should be a string',
+            'string.empty': 'Category name cannot be empty',
+            'string.min': 'Category name should have a minimum length of 3',
+            'string.max': 'Category name should have a maximum length of 30',
+            'any.required': 'Category name is required',
+        }),
+})
+
 
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
+    validateCategory,
 }
