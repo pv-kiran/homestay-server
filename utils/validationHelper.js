@@ -74,10 +74,22 @@ const validateCategory = Joi.object({
         }),
 })
 
+const validateUserSignup = Joi.object({
+    email: Joi.string()
+        .email({ minDomainSegments: 2})
+        .required()
+        .messages({
+            "any.required": "Email is required",
+            "string.email": "Invalid email format",
+        })       
+})
+
+
 
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
     validateCategory,
+    validateUserSignup
 }

@@ -4,12 +4,12 @@ const router = express.Router();
 const { adminSignUp, adminOtpVerify, adminLogin, addCategory, updateCategory, disableCategory } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
-router.post('/super/admin/signup', adminSignUp);
-router.post('/super/admin/otp/verify', adminOtpVerify);
-router.post('/admin/signin', adminLogin);
-router.post('/admin/add-category', addCategory);
-router.put('/admin/edit-category/:categoryId', updateCategory);
-router.put('/admin/disable-category/:categoryId', disableCategory);
+router.post('/auth/signup', adminSignUp);
+router.post('/auth/otp/verify', adminOtpVerify);
+router.post('/auth/signin', adminLogin);
+router.post('/add-category', addCategory);
+router.put('/edit-category/:categoryId', updateCategory);
+router.put('/disable-category/:categoryId', disableCategory);
 
 
 
