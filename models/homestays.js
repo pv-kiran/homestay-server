@@ -57,7 +57,16 @@ const homestaySchema = new mongoose.Schema({
             },
         },
     },
-    amenities: [String], 
+    amenities: [{
+        title: {
+            type: String,
+            required: true,
+        },
+        icon: {
+            type: String, 
+            required: true,
+        },
+    }],
     noOfRooms: {
         type: Number,
         required: true,
@@ -79,6 +88,10 @@ const homestaySchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now,
+    },
+    isDisabled: {
+        type: Boolean,
+        default: false
     },
 })
 

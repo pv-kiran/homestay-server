@@ -1,13 +1,14 @@
 const Admin = require("../models/admin");
 const Category = require('../models/category');
+const Homestay = require('../models/homestays')
 const {transporter} = require('../utils/emailHelper');
-const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory} = require('../utils/validationHelper');
+const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, validateHomestay} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
 const {generateOtpEmailTemplate} = require('../templates/otpEmailTemplate');
 const {cloudinary} = require('../utils/cloudinaryHelper');
-const upload = require('../utils/multerHelper');
+const {upload} = require('../utils/multerHelper');
 
 //ADMIN SIGNUP
 const adminSignUp = async (req,res) => {
@@ -284,29 +285,91 @@ const updateCategory = async (req, res) => {
 };
 
 
-//ADMIN CATEGORY MANAGEMENT - DISABLE
-const disableCategory = async (req, res) => {
+//ADMIN CATEGORY MANAGEMENT - DISABLE & ENABLE
+const toggleCategory = async (req, res) => {
     try {
-        const {categoryId} = req.params;
-        const disabledCategory = await Category.findByIdAndUpdate(
-            categoryId,
-            { isDisabled: true },
-            { new: true }
-        );
+        const { categoryId } = req.params;
+        const category = await Category.findById(categoryId);
 
-        if(!disabledCategory) {
+        if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
-        res.status(200).json({ 
+
+        // Toggle the isDisabled state
+        category.isDisabled = !category.isDisabled;
+        
+        const updatedCategory = await category.save();
+
+        res.status(200).json({
             success: true,
-            message: 'Category disabled successfully', 
-            category: disabledCategory 
+            message: updatedCategory.isDisabled ? 'Category disabled successfully' : 'Category enabled successfully',
+            category: updatedCategory,
         });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: 'Internal server error' });
     }
+};
+
+
+//ADMIN - ADD HOMESTAY
+const addHomestay = async(req, res) => {
+
+    try {
+        const { error } = validateHomestay.validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+        const homestayData = req.body;
+        const existingHomestay = await Homestay.findOne({
+            title: homestayData.title,
+            'address.street': homestayData.address.street,
+            'address.city': homestayData.address.city,
+            'address.zip': homestayData.address.zip
+        });
+        if (existingHomestay) {
+            return res.status(409).json({ message: 'A homestay with the same title and address already exists.' });
+        }
+
+        let uploadedImages = [];
+        if (req.files && req.files.images) {
+            const imageUploadPromises = req.files.images.map(file =>
+                cloudinary.uploader.upload(file.path, { folder: 'homestays' })
+            );
+
+            const imageUploadResults = await Promise.all(imageUploadPromises);
+            uploadedImages = imageUploadResults.map(result => result.secure_url);
+        }
+        homestayData.images = uploadedImages;
+
+        if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
+            const updatedAmenities = await Promise.all(homestayData.amenities.map(async (amenity, index) => {
+                const fileKey = `amenities[${index}].icon`;
+                if (req.files[fileKey]) {
+                    const iconFile = req.files[fileKey][0];
+                    const iconUploadResult = await cloudinary.uploader.upload(iconFile.path, { folder: 'amenities/icons' });
+                    amenity.icon = iconUploadResult.secure_url;
+                }
+                return amenity;
+            }));
+            homestayData.amenities = updatedAmenities;
+        }
+
+        const newHomestay = new Homestay(homestayData);
+        await newHomestay.save();
+        return res.status(201).json({ 
+            success:true,
+            message: 'Homestay added successfully', 
+            homestay: newHomestay 
+        });
+    } catch (error) {
+        console.log(error);
+        
+        return res.status(500).json({ message: 'Error adding homestay' });
+    }
 }
+
+
 
 module.exports = {
     adminSignUp,
@@ -314,5 +377,6 @@ module.exports = {
     adminLogin,
     addCategory,
     updateCategory,
-    disableCategory,
+    toggleCategory,
+    addHomestay,
 }

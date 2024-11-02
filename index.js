@@ -5,8 +5,8 @@ const app = express();
 // dot env config
 require("dotenv").config();
 
-app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // mongodb connection
 let { connectDB } = require("./db/connection");
