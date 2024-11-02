@@ -76,26 +76,37 @@ const validateCategory = Joi.object({
 
 const validateHomestay = Joi.object({
     title: Joi.string().required().messages({
-        'any.required': 'Title is required.'
+        'any.required': 'Title is required.',
+        'string.base': 'Title should be a string',
+        'string.empty': 'Title cannot be empty',
+        'string.min': 'Title should have a minimum length of 3',
     }),
     description: Joi.string().required().messages({
-        'any.required': 'Description is required.'
+        'any.required': 'Description is required.',
+        'string.base': 'Description should be a string',
+        'string.empty': 'Description cannot be empty',
+        'string.min': 'Description should have a minimum length of 3',
     }),
     address: Joi.object({
         street: Joi.string().required().messages({
-            'any.required': 'Street address is required.'
+            'any.required': 'Street address is required.',
+            'string.empty': 'Street address cannot be empty',
         }),
         city: Joi.string().required().messages({
-            'any.required': 'City is required.'
+            'any.required': 'City is required.',
+            'string.empty': 'City cannot be empty',
         }),
         district: Joi.string().required().messages({
-            'any.required': 'District is required.'
+            'any.required': 'District is required.',
+            'string.empty': 'District cannot be empty',
         }),
         state: Joi.string().required().messages({
-            'any.required': 'State is required.'
+            'any.required': 'State is required.',
+            'string.empty': 'State cannot be empty',
         }),
         zip: Joi.string().required().messages({
-            'any.required': 'ZIP code is required.'
+            'any.required': 'ZIP code is required.',
+            'string.empty': 'ZIP code cannot be empty',
         }),
         coordinates: Joi.object({
             latitude: Joi.number().required().messages({
@@ -151,7 +162,8 @@ const validateHomestay = Joi.object({
         'any.required': 'Hotel policies are required.'
     }),
     category: Joi.string().required().messages({
-        'any.required': 'Category is required.'
+        'any.required': 'Category is required.',
+        'string.empty': 'Category is required.',
     }),
 })
 

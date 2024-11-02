@@ -376,6 +376,88 @@ const addHomestay = async(req, res) => {
 }
 
 
+//ADMIN - UPDATE HOMESTAY
+const updateHomestay = async (req, res) => {
+    try {
+        const { error } = validateHomestay.validate(req.body); // Assume same validation function
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        const homestayData = req.body;
+        const { homestayId } = req.params; // Assume homestay ID is provided in the URL
+
+        // Find the existing homestay
+        const existingHomestay = await Homestay.findById(homestayId);
+        if (!existingHomestay) {
+            return res.status(404).json({ message: 'Homestay not found' });
+        }
+
+        // Check if category exists
+        const category = await Category.findOne({ categoryName: homestayData.category });
+        if (!category) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+        homestayData.category = category._id;
+
+        // Check for duplicate homestay with the same title and address
+        const duplicateHomestay = await Homestay.findOne({
+            _id: { $ne: homestayId }, // Exclude the current homestay
+            title: homestayData.title,
+            'address.street': homestayData.address.street,
+            'address.city': homestayData.address.city,
+            'address.zip': homestayData.address.zip,
+        });
+        if (duplicateHomestay) {
+            return res.status(409).json({ message: 'A homestay with the same title and address already exists.' });
+        }
+
+        // Handle image uploads
+        let uploadedImages = existingHomestay.images; // Keep existing images
+        if (req.files && req.files.images) {
+            const imageUploadPromises = req.files.images.map(file =>
+                cloudinary.uploader.upload(file.path, { folder: 'homestays' })
+            );
+
+            const imageUploadResults = await Promise.all(imageUploadPromises);
+            uploadedImages = uploadedImages.concat(imageUploadResults.map(result => result.secure_url));
+        }
+        homestayData.images = uploadedImages;
+
+        // Update amenities
+        if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
+            const updatedAmenities = await Promise.all(homestayData.amenities.map(async (amenity, index) => {
+                if (req.files[`amenities[${index}].icon`]) {
+                    const iconFile = req.files[`amenities[${index}].icon`][0];
+                    const iconUploadResult = await cloudinary.uploader.upload(iconFile.path, { folder: 'amenities/icons' });
+                    amenity.icon = iconUploadResult.secure_url;
+                } else {
+                    const existingAmenity = existingHomestay.amenities[index];
+                    if (existingAmenity) {
+                        amenity.icon = existingAmenity.icon; // Retain the existing icon if not updated
+                    }
+                }
+                return amenity;
+            }));
+            homestayData.amenities = updatedAmenities;
+        }
+
+        // Update the homestay
+        Object.assign(existingHomestay, homestayData); // Merge new data
+        await existingHomestay.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Homestay updated successfully',
+            homestay: existingHomestay,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error updating homestay' });
+    }
+};
+
+
 
 module.exports = {
     adminSignUp,
@@ -385,4 +467,5 @@ module.exports = {
     updateCategory,
     toggleCategory,
     addHomestay,
+    updateHomestay
 }
