@@ -49,8 +49,8 @@ const validateOtp = Joi.object({
         }),
     otp: Joi.number()
         .integer()
-        .min(1000)
-        .max(9999)
+        .min(100000)
+        .max(999999)
         .required()
         .messages({
             'number.base': 'OTP must be a number',
