@@ -150,6 +150,9 @@ const validateHomestay = Joi.object({
     }).required().messages({
         'any.required': 'Hotel policies are required.'
     }),
+    category: Joi.string().required().messages({
+        'any.required': 'Category is required.'
+    }),
 })
 
 

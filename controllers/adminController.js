@@ -321,6 +321,13 @@ const addHomestay = async(req, res) => {
             return res.status(400).json({ message: error.details[0].message });
         }
         const homestayData = req.body;
+
+        const category = await Category.findOne({ categoryName: homestayData.category });
+        if (!category) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+        homestayData.category = category._id
+
         const existingHomestay = await Homestay.findOne({
             title: homestayData.title,
             'address.street': homestayData.address.street,
