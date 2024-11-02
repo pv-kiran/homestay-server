@@ -286,7 +286,7 @@ const updateCategory = async (req, res) => {
 
 
 //ADMIN CATEGORY MANAGEMENT - DISABLE & ENABLE
-const toggleCategory = async (req, res) => {
+const toggleCategoryStatus = async (req, res) => {
     try {
         const { categoryId } = req.params;
         const category = await Category.findById(categoryId);
@@ -457,6 +457,34 @@ const updateHomestay = async (req, res) => {
     }
 };
 
+//ADMIN - TOGGLE HOMESTAY - DISABLING & ENABLING
+const toggleHomestayStatus = async (req, res) => {
+    try {
+        const { homestayId } = req.params; 
+
+        const existingHomestay = await Homestay.findById(homestayId);
+        if (!existingHomestay) {
+            return res.status(404).json({ message: 'Homestay not found' });
+        }
+        // Toggle the isDisabled status
+        existingHomestay.isDisabled = !existingHomestay.isDisabled;
+        
+        // Save the updated homestay
+        await existingHomestay.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Homestay has been ${existingHomestay.isDisabled ? 'disabled' : 'enabled'} successfully`,
+            homestay: existingHomestay,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error toggling homestay status' });
+    }
+};
+
+
+
 
 
 module.exports = {
@@ -465,7 +493,8 @@ module.exports = {
     adminLogin,
     addCategory,
     updateCategory,
-    toggleCategory,
+    toggleCategoryStatus,
     addHomestay,
-    updateHomestay
+    updateHomestay,
+    toggleHomestayStatus
 }
