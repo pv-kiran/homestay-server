@@ -237,6 +237,29 @@ const adminLogin = async (req, res) => {
 
 }
 
+//ADMIN LOGOUT
+const adminLogout = async (req, res) => {
+    try {
+        // Clear the token cookie by setting it to an empty string and expiring immediately
+        res.cookie('token', '', {
+            expires: new Date(0),  // Expire immediately
+            httpOnly: true,       // Prevent client-side JavaScript from accessing the cookie
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Admin Logout successful',
+        });
+    } catch (error) {
+        console.error('Error during logout:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred during logout',
+        });
+    }
+};
+
+
 //ADMIN CATEGORY MANAGEMENT - ADD
 const addCategory = async (req, res) => {
     upload.single('iconUrl')(req, res, async (error) => { 
@@ -634,6 +657,7 @@ module.exports = {
     adminSignUp,
     adminOtpVerify,
     adminLogin,
+    adminLogout,
     addCategory,
     updateCategory,
     toggleCategoryStatus,

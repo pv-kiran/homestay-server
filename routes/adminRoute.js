@@ -3,9 +3,11 @@ const router = express.Router();
 const { homestayUpload } = require('../utils/multerHelper'); // Ensure correct path
 
 
-const { adminSignUp, 
+const { 
+    adminSignUp, 
     adminOtpVerify, 
     adminLogin, 
+    adminLogout,
     addCategory, 
     updateCategory, 
     toggleCategoryStatus, 
@@ -34,6 +36,7 @@ const fields = [
 router.post('/auth/signup', adminSignUp);
 router.post('/auth/otp/verify', adminOtpVerify);
 router.post('/auth/signin', adminLogin);
+router.post('/auth/logout', adminLogout);
 router.post('/add-category', addCategory);
 router.put('/edit-category/:categoryId', updateCategory);
 router.put('/toggle-category/:categoryId', toggleCategoryStatus);
