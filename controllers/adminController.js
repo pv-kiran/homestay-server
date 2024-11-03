@@ -6,7 +6,7 @@ const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, v
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
-const {generateOtpEmailTemplate} = require('../templates/otpEmailTemplate');
+const {generateAdminOtpEmailTemplate} = require('../templates/otpEmailTemplate');
 const {cloudinary} = require('../utils/cloudinaryHelper');
 const {upload} = require('../utils/multerHelper');
 
@@ -23,41 +23,78 @@ const adminSignUp = async (req,res) => {
     try {
         const adminExists = await Admin.findOne({email: email});
         if(adminExists){
-            return res.status(400).json({
-                message: 'Email id already exists !'
-            })
+            if (adminExists.isVerified) {
+                return res.status(400).json({
+                    message: 'Email ID already exists!',
+                    isVerified: adminExists.isVerified
+                });
+            }
+            else {
+                const currentTime = Date.now();
+                if (adminExists.otpExpiry > currentTime) {
+                    return res.status(400).json({
+                        message: 'Enter OTP to finish signup.',
+                        isVerified: adminExists.isVerified
+                    });
+                }
+                else {
+                    const otp = generateOtp();
+                    const otpExpiry = getOtpExpiry();
+
+                    adminExists.otp = otp;
+                    adminExists.otpExpiry = otpExpiry;
+                    await adminExists.save();
+
+                    // Resend OTP
+                    const mailOptions = {
+                        from: 'admin@gmail.com',
+                        to: `${email}`,
+                        subject: 'ADMIN SIGNUP - OTP VERIFICATION',
+                        html: generateAdminOtpEmailTemplate(email, otp)
+                    };
+
+                    await transporter.sendMail(mailOptions);
+
+                    return res.status(201).json({
+                        success: true,
+                        message: 'OTP has expired. A new OTP has been sent to your email.',
+                        isVerified: adminExists.isVerified
+                    });
+                }
+            }
         }
+        else {
+            const encPassword = await getHashedPassword(password);
+            const otp = generateOtp();
+            const otpExpiry = getOtpExpiry();
+            
+            const newAdmin = await Admin.create({
+                name: name ,
+                email: email ,
+                password: encPassword ,
+                otp: otp ,
+                otpExpiry: otpExpiry
+            });
 
-        const encPassword = await getHashedPassword(password);
-        const otp = generateOtp();
-        const otpExpiry = getOtpExpiry();
-        
-        const newAdmin = await Admin.create({
-            name: name ,
-            email: email ,
-            password: encPassword ,
-            otp: otp ,
-            otpExpiry: otpExpiry
-        });
+            // OTP Send
+            const mailOptions = {
+                from: 'admin@gmail.com',
+                to: `${email}`,
+                subject: 'ADMIN SIGNUP - OTP VERIFICATION',
+                html: generateAdminOtpEmailTemplate(email, otp)
+            };
 
-        // OTP Send
-        const mailOptions = {
-            from: 'admin@gmail.com',
-            to: `${email}`,
-            subject: 'OTP VERIFICATION',
-            html: generateOtpEmailTemplate(name, otp)
-        };
-
-        await transporter.sendMail(mailOptions);
-        
-        return res.status(201).json({
-            success: true ,
-            admin: {
-                _id: newAdmin._id,
-                email: newAdmin.email
-            },
-            message: 'Signup successful! Please check your email for OTP verification.',
-        });
+            await transporter.sendMail(mailOptions);
+            
+            return res.status(201).json({
+                success: true ,
+                admin: {
+                    _id: newAdmin._id,
+                    email: newAdmin.email
+                },
+                message: 'Signup successful! Please check your email for OTP verification.',
+            });
+        }
 
     } catch(e) {
         if (e.name === 'ValidationError') {
