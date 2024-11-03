@@ -366,6 +366,32 @@ const toggleCategoryStatus = async (req, res) => {
 };
 
 
+//ADMIN CATEGORY MANAGEMENT - GET ALL CATEGORIES
+const getAllCategories = async (req, res) => {
+    try {
+        const categories = await Category.find();
+
+        if (!categories.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'No categories found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: categories
+        });
+    } catch (error) {
+        console.error('Error retrieving categories:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving categories'
+        });
+    }
+};
+
+
 //ADMIN - ADD HOMESTAY
 const addHomestay = async(req, res) => {
 
@@ -564,7 +590,7 @@ const getHomestayById = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            homestayData: homestay
+            data: homestay
         });
     } catch (error) {
         console.error('Error retrieving homestay:', error);
@@ -575,7 +601,32 @@ const getHomestayById = async (req, res) => {
     }
 };
 
+//ADMIN - FETCH ALL HOMESTAYS
+const getAllHomestays = async (req, res) => {
+    try {
+        const homestays = await Homestay.find()
+            .select('-createdAt') // Exclude 'createdAt' field
+            .populate('category'); // Populate 'category' field
 
+        if (!homestays.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'No homestays found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: homestays
+        });
+    } catch (error) {
+        console.error('Error retrieving homestays:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving homestays'
+        });
+    }
+};
 
 
 
@@ -589,5 +640,7 @@ module.exports = {
     addHomestay,
     updateHomestay,
     toggleHomestayStatus,
-    getHomestayById
+    getHomestayById,
+    getAllHomestays,
+    getAllCategories,
 }

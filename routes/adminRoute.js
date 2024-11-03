@@ -3,7 +3,19 @@ const router = express.Router();
 const { homestayUpload } = require('../utils/multerHelper'); // Ensure correct path
 
 
-const { adminSignUp, adminOtpVerify, adminLogin, addCategory, updateCategory, toggleCategoryStatus, addHomestay, updateHomestay, toggleHomestayStatus, getHomestayById } = require('../controllers/adminController');
+const { adminSignUp, 
+    adminOtpVerify, 
+    adminLogin, 
+    addCategory, 
+    updateCategory, 
+    toggleCategoryStatus, 
+    getAllCategories,
+    addHomestay, 
+    updateHomestay, 
+    toggleHomestayStatus, 
+    getHomestayById, 
+    getAllHomestays 
+} = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
 
@@ -25,11 +37,15 @@ router.post('/auth/signin', adminLogin);
 router.post('/add-category', addCategory);
 router.put('/edit-category/:categoryId', updateCategory);
 router.put('/toggle-category/:categoryId', toggleCategoryStatus);
+router.get('/get-allcategories', getAllCategories);
+
 
 router.post('/add-homestay', homestayUpload.fields(fields), addHomestay);
 router.put('/update-homestay/:homestayId', homestayUpload.fields(fields), updateHomestay);
 router.put('/toggle-homestay/:homestayId', toggleHomestayStatus);
 router.get('/get-homestay/:homestayId', getHomestayById);
+router.get('/get-allhomestays', getAllHomestays);
+
 
 
 
