@@ -187,11 +187,72 @@ const validateUserSignup = Joi.object({
         })       
 })
 
+
+const is18OrOlder = (dob) => {
+    const today = new Date();
+    const dobDate = new Date(dob);
+    const age = today.getFullYear() - dobDate.getFullYear();
+    const monthDifference = today.getMonth() - dobDate.getMonth();
+
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dobDate.getDate())) {
+        return age - 1;
+    }
+    return age;
+};
+
+
+const userValidationSchema = Joi.object({
+    fullName: Joi.string()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            "any.required": "Full name is required",
+            "string.empty": "Full name cannot be empty",
+            "string.min": "Full name should have a minimum length of 2 characters",
+            "string.max": "Full name should have a maximum length of 100 characters",
+            "string.base": "Full name must be a string"
+        }),
+
+    email: Joi.string()
+        .email({ minDomainSegments: 2 })
+        .required()
+        .messages({
+            "any.required": "Email is required",
+            "string.email": "Invalid email format",
+            "string.empty": "Email cannot be empty",
+            "string.base": "Email must be a string"
+        }),
+
+    dob: Joi.date()
+        .iso()
+        .required()
+        .custom((value, helpers) => {
+            if (is18OrOlder(value) < 18) {
+                return helpers.message("User must be at least 18 years old");
+            }
+            return value;
+        })
+        .messages({
+            "any.required": "Date of birth is required",
+            "date.base": "Date of birth must be a valid date",
+            "date.format": "Date of birth must be in ISO format (YYYY-MM-DD)"
+        }),
+
+    isMarketingAllowed: Joi.boolean()
+        .messages({
+            "boolean.base": "Marketing preference must be a boolean value (true or false)"
+        })
+});
+
+
+
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
     validateCategory,
     validateHomestay,
-    validateUserSignup
+    validateUserSignup,
+    userValidationSchema
 }

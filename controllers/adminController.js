@@ -69,7 +69,6 @@ const adminSignUp = async (req,res) => {
         } else if (e.message.includes('sendMail')) {
             return res.status(500).json({ message: 'Error sending OTP email' });
         } else {
-            console.error(e);
             return res.status(500).json({ message: 'An unexpected error occurred' });
         }
     }
@@ -114,7 +113,6 @@ const adminOtpVerify = async (req,res) => {
             })
         }
     } catch(e) {
-        console.log(e);
         return res.status(500).json({
             success: false,
             message: "An unexpected error occurred"
@@ -175,7 +173,6 @@ const adminLogin = async (req, res) => {
             })
         }
     } catch (err) {
-        console.log(err)
         res.status(500).json({
             errorInfo :'Internal server error'
         })
@@ -306,7 +303,6 @@ const toggleCategoryStatus = async (req, res) => {
             category: updatedCategory,
         });
     } catch (error) {
-        console.log(error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -370,7 +366,6 @@ const addHomestay = async(req, res) => {
             homestay: newHomestay 
         });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({ message: 'Error adding homestay' });
     }
 }
@@ -452,7 +447,6 @@ const updateHomestay = async (req, res) => {
             homestay: existingHomestay,
         });
     } catch (error) {
-        console.error(error);
         return res.status(500).json({ message: 'Error updating homestay' });
     }
 };
@@ -478,7 +472,6 @@ const toggleHomestayStatus = async (req, res) => {
             homestay: existingHomestay,
         });
     } catch (error) {
-        console.error(error);
         return res.status(500).json({ message: 'Error toggling homestay status' });
     }
 };
