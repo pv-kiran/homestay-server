@@ -49,7 +49,35 @@ const generateAdminOtpEmailTemplate = (email, otp) => {
     `;
 };
 
+const generateAdminWelcomeEmailTemplate = (name) => {
+    return `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #2c3e50;">Welcome to BeStays, ${name}!</h2>
+            <p>Dear ${name},</p>
+            
+            <p>Congratulations! Your OTP verification was successful, and we are excited to officially welcome you to the BeStays team as an Admin.</p>
+            
+            <p>As an Admin, you now have access to manage, oversee, and support our community, helping us create an exceptional experience for all our users. We are confident that your expertise and dedication will make a significant impact on our platform.</p>
+            
+            <div style="padding: 10px; border: 1px solid #ddd; display: inline-block; margin: 15px 0;">
+                <h3 style="color: #2c3e50; margin: 0;">Welcome to the Team!</h3>
+            </div>
+            
+            <p>If you have any questions or need assistance as you settle into your role, please don’t hesitate to reach out to our support team.</p>
+            <br>
+            <p>Once again, welcome to BeStays. We’re thrilled to have you with us!</p>
+            <br>
+            <p>Best Regards,<br>The BeStays Team</p>
+            
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #777;">If you need assistance, please contact support at <a href="mailto:support@yourcompany.com">support@yourcompany.com</a>.</p>
+        </div>
+    `;
+};
+
+
 module.exports = {
     generateOtpEmailTemplate,
-    generateAdminOtpEmailTemplate
+    generateAdminOtpEmailTemplate,
+    generateAdminWelcomeEmailTemplate
 };

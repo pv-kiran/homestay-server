@@ -6,7 +6,7 @@ const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, v
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
-const {generateAdminOtpEmailTemplate} = require('../templates/otpEmailTemplate');
+const {generateAdminOtpEmailTemplate, generateAdminWelcomeEmailTemplate} = require('../templates/otpEmailTemplate');
 const {cloudinary} = require('../utils/cloudinaryHelper');
 const {upload} = require('../utils/multerHelper');
 
@@ -134,6 +134,16 @@ const adminOtpVerify = async (req,res) => {
                         admin[0].otp = undefined;
                         admin[0].otpExpiry = undefined;
                         await admin[0].save();
+
+                        const mailOptions = {
+                            from: 'admin@gmail.com',
+                            to: `${email}`,
+                            subject: 'OTP VERIFICATION SUCCESSFUL',
+                            html: generateAdminWelcomeEmailTemplate(admin[0].name)
+                        };
+            
+                        await transporter.sendMail(mailOptions);
+
                     return res.status(200).json({
                         success: true,
                         message: "OTP verification successful"
