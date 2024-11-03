@@ -2,7 +2,7 @@ const Admin = require("../models/admin");
 const Category = require('../models/category');
 const Homestay = require('../models/homestays')
 const {transporter} = require('../utils/emailHelper');
-const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, validateHomestay} = require('../utils/validationHelper');
+const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, validateHomestay, validateHomestayId} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
@@ -537,6 +537,44 @@ const toggleHomestayStatus = async (req, res) => {
     }
 };
 
+//ADMIN - FETCH HOMESTAY BY ID
+const getHomestayById = async (req, res) => {
+
+    const { error } = validateHomestayId.validate(req.params);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    const { homestayId } = req.params;
+
+    try {
+        const homestay = await Homestay.findById(homestayId)
+            .select('-createdAt') // Exclude 'createdAt'
+            .populate('category'); // Populate 'category'
+
+        if (!homestay) {
+            return res.status(404).json({
+                success: false,
+                message: 'Homestay not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            homestayData: homestay
+        });
+    } catch (error) {
+        console.error('Error retrieving homestay:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving the homestay'
+        });
+    }
+};
+
 
 
 
@@ -550,5 +588,6 @@ module.exports = {
     toggleCategoryStatus,
     addHomestay,
     updateHomestay,
-    toggleHomestayStatus
+    toggleHomestayStatus,
+    getHomestayById
 }

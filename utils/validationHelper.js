@@ -187,11 +187,24 @@ const validateUserSignup = Joi.object({
         })       
 })
 
+// Custom ObjectId validation rule
+const objectIdValidation = (value, helpers) => {
+    if (!mongoose.isValidObjectId(value)) {
+        return helpers.message('Invalid ID format');
+    }
+    return value;
+};
+
+const validateHomestayId = Joi.object({
+    homestayId: Joi.string().custom(objectIdValidation).required()
+});
+
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
     validateCategory,
     validateHomestay,
-    validateUserSignup
+    validateUserSignup,
+    validateHomestayId
 }

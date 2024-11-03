@@ -3,7 +3,7 @@ const router = express.Router();
 const { homestayUpload } = require('../utils/multerHelper'); // Ensure correct path
 
 
-const { adminSignUp, adminOtpVerify, adminLogin, addCategory, updateCategory, toggleCategoryStatus, addHomestay, updateHomestay, toggleHomestayStatus } = require('../controllers/adminController');
+const { adminSignUp, adminOtpVerify, adminLogin, addCategory, updateCategory, toggleCategoryStatus, addHomestay, updateHomestay, toggleHomestayStatus, getHomestayById } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
 
@@ -29,6 +29,8 @@ router.put('/toggle-category/:categoryId', toggleCategoryStatus);
 router.post('/add-homestay', homestayUpload.fields(fields), addHomestay);
 router.put('/update-homestay/:homestayId', homestayUpload.fields(fields), updateHomestay);
 router.put('/toggle-homestay/:homestayId', toggleHomestayStatus);
+router.get('/get-homestay/:homestayId', getHomestayById);
+
 
 
 
