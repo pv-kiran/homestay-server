@@ -31,10 +31,12 @@ app.get("/", (req, res) => {
   res.send("Hello");
 });
 
-const authRoutes = require("./routes/adminRoute");
+const adminRoutes = require("./routes/adminRoute");
+const userRoutes = require("./routes/userRoute");
 
 
-app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/user", userRoutes)
 
 // establishing connection to database
 

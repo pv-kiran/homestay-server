@@ -23,6 +23,10 @@ const adminSchema = new mongoose.Schema({
     otpExpiry: {
         type: Date
     },
+    isVerified: {
+        type: Boolean,
+        default: false
+    }
 })
 
 
