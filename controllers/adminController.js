@@ -175,6 +175,12 @@ const adminLogin = async (req, res) => {
         const adminExists = await Admin.findOne({ email: email });
 
         if (adminExists) {
+            if (!adminExists.isVerified) {
+                return res.status(400).json({
+                    message: 'Please complete OTP verification to login.',
+                    isVerified: adminExists.isVerified
+                });
+            }
             const isCorrectPassword = await verifyPassword(password, adminExists.password);
             if (isCorrectPassword) {
 
@@ -195,7 +201,8 @@ const adminLogin = async (req, res) => {
                 admin: {
                     _id: adminExists._id,
                     email: adminExists.email,
-                    token: token
+                    token: token,
+                    isVerified: adminExists.isVerified
                 },
                 message: 'Admin Login Successful'
             });
