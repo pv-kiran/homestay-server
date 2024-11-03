@@ -134,18 +134,18 @@ const adminOtpVerify = async (req,res) => {
                         admin[0].otp = undefined;
                         admin[0].otpExpiry = undefined;
                         await admin[0].save();
-                    return res.json({
+                    return res.status(200).json({
                         success: true,
                         message: "OTP verification successful"
                     })
                 } else {
-                    return res.json({
+                    return res.status(400).json({
                         success: true,
                         message: "OTP already expired !"
                     })
                 }
         } else {
-            return res.json({
+            return res.status(400).json({
                 success: true,
                 message: "Invalid OTP !"
             })
