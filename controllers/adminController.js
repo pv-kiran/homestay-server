@@ -322,7 +322,7 @@ const addHomestay = async(req, res) => {
         }
         const homestayData = req.body;
 
-        const category = await Category.findOne({ categoryName: homestayData.category });
+        const category = await Category.findOne({ _id: homestayData.categoryId });
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
@@ -394,7 +394,7 @@ const updateHomestay = async (req, res) => {
         }
 
         // Check if category exists
-        const category = await Category.findOne({ categoryName: homestayData.category });
+        const category = await Category.findOne({ _id: homestayData.categoryId });
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }

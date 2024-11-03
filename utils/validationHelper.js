@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const mongoose = require('mongoose');
 
 const validateAdminSignup = Joi.object({
     name: Joi.string()
@@ -161,10 +162,19 @@ const validateHomestay = Joi.object({
     }).required().messages({
         'any.required': 'Hotel policies are required.'
     }),
-    category: Joi.string().required().messages({
-        'any.required': 'Category is required.',
-        'string.empty': 'Category is required.',
-    }),
+    categoryId: Joi.string()
+        .required()
+        .custom((value, helpers) => {
+            // Check if value is a valid MongoDB ObjectId
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                return helpers.message("Invalid Category ID format.");
+            }
+            return value; 
+        })
+        .messages({
+            'any.required': 'Category is required.',
+            'string.empty': 'Category is required.',
+        })
 })
 
 const validateUserSignup = Joi.object({
