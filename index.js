@@ -14,7 +14,7 @@ let { connectDB } = require("./db/connection");
 // cors
 const cors = require("cors");
 app.use(
-  cors({ credentials: true, origin: "http://localhost:3000" })
+  cors({ credentials: true, origin: "http://localhost:5173" })
 );
 
 // parsing the cookies

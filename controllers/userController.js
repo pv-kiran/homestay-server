@@ -1,3 +1,4 @@
+const { default: axios } = require("axios");
 const User = require("../models/user");
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
@@ -24,9 +25,9 @@ const userSignup = async (req, res) => {
             await userExists.save();
         } else {
             userExists = await User.create({
-                    email: email ,
-                    otp: otp ,
-                    otpExpiry: otpExpiry
+                email: email ,
+                otp: otp ,
+                otpExpiry: otpExpiry
             });
         }
 
@@ -100,7 +101,10 @@ const userOtpVerify = async (req,res) => {
                     
                     return res.json({
                         success: true,
-                        token,
+                        userDetails: {
+                            token,
+                            email: user?.email
+                        },
                         message: "Signed In"
                     })
                 } else {
@@ -124,7 +128,80 @@ const userOtpVerify = async (req,res) => {
     }
 }
 
+
+const googleSignIn  =  async (req, res) => {
+  try {
+    const { access_token } = req.body;
+
+    // 1. Verify the token and get user info server-side
+    const userInfoResponse = await axios.get(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      }
+    );
+
+    // 2. Verify token validity
+    const tokenInfoResponse = await axios.get(
+      `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${access_token}`
+    );
+
+      console.log(tokenInfoResponse)
+    // 3. Verify that the token was intended for your application
+    if (tokenInfoResponse.data.audience !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ message: 'Invalid token audience' });
+    }
+
+    const userInfo = userInfoResponse.data;
+
+    // 4. Find or create user with rate limiting
+    let user = await User.findOne({ email: userInfo.email });
+    
+    if (!user) {
+      // Add rate limiting for new user creation
+      const newUserCount = await User.countDocuments({
+        createdAt: { $gt: new Date(Date.now() - 3600000) } // Last hour
+      });
+      
+      if (newUserCount > 100) { // Adjust limit as needed
+        return res.status(429).json({ message: 'Too many new accounts' });
+      }
+
+      user = new User({
+        email: userInfo.email,
+      });
+      await user.save();
+      }
+      
+      const token = await getToken(user._id, userInfo.email);
+
+   
+
+    return res.json({
+        success: true,
+        userDetails: {
+            token,
+            email: user?.email
+        },
+        message: "Signed In"
+    })
+
+  } catch (error) {
+    console.error('Auth error:', error);
+    
+    // 7. Proper error handling with appropriate status codes
+    if (error.response?.status === 401) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    
+    res.status(500).json({ message: 'Authentication failed' });
+  }
+};
+
 module.exports = {
     userSignup,
-    userOtpVerify
+    userOtpVerify,
+    googleSignIn
 }
