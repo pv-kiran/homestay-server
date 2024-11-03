@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const mongoose = require('mongoose');
 
 const validateAdminSignup = Joi.object({
     name: Joi.string()
@@ -74,6 +75,108 @@ const validateCategory = Joi.object({
         }),
 })
 
+const validateHomestay = Joi.object({
+    title: Joi.string().required().messages({
+        'any.required': 'Title is required.',
+        'string.base': 'Title should be a string',
+        'string.empty': 'Title cannot be empty',
+        'string.min': 'Title should have a minimum length of 3',
+    }),
+    description: Joi.string().required().messages({
+        'any.required': 'Description is required.',
+        'string.base': 'Description should be a string',
+        'string.empty': 'Description cannot be empty',
+        'string.min': 'Description should have a minimum length of 3',
+    }),
+    address: Joi.object({
+        street: Joi.string().required().messages({
+            'any.required': 'Street address is required.',
+            'string.empty': 'Street address cannot be empty',
+        }),
+        city: Joi.string().required().messages({
+            'any.required': 'City is required.',
+            'string.empty': 'City cannot be empty',
+        }),
+        district: Joi.string().required().messages({
+            'any.required': 'District is required.',
+            'string.empty': 'District cannot be empty',
+        }),
+        state: Joi.string().required().messages({
+            'any.required': 'State is required.',
+            'string.empty': 'State cannot be empty',
+        }),
+        zip: Joi.string().required().messages({
+            'any.required': 'ZIP code is required.',
+            'string.empty': 'ZIP code cannot be empty',
+        }),
+        coordinates: Joi.object({
+            latitude: Joi.number().required().messages({
+                'number.base': 'Latitude must be a number.',
+                'any.required': 'Latitude is required.'
+            }),
+            longitude: Joi.number().required().messages({
+                'number.base': 'Longitude must be a number.',
+                'any.required': 'Longitude is required.'
+            }),
+        }).required().messages({
+            'any.required': 'Coordinates are required.'
+        }),
+    }).required().messages({
+        'any.required': 'Address is required.'
+    }),
+    amenities: Joi.array().items(
+        Joi.object({
+            title: Joi.string().required(),
+            icon: Joi.string().uri().optional()
+        })
+    ).required().messages({
+        'any.required': 'Amenities are required.',
+    }),
+    noOfRooms: Joi.number().integer().required().messages({
+        'number.base': 'Number of rooms must be a number.',
+        'any.required': 'Number of rooms is required.'
+    }),
+    noOfBathRooms: Joi.number().integer().required().messages({
+        'number.base': 'Number of bathrooms must be a number.',
+        'any.required': 'Number of bathrooms is required.'
+    }),
+    pricePerNight: Joi.number().required().messages({
+        'number.base': 'Price per night must be a number.',
+        'any.required': 'Price per night is required.'
+    }),
+    maxGuests: Joi.number().integer().required().min(1).messages({
+        'number.base': 'Maximum number of guests must be a number.',
+        'any.required': 'Maximum number of guests is required.'
+    }),
+    // images: Joi.array().items(Joi.string()).optional(),
+    hotelPolicies: Joi.object({
+        checkInTime: Joi.string().required().messages({
+            'string.empty': 'Check-in time is required.',
+            'any.required': 'Check-in time is required.'
+        }),
+        checkOutTime: Joi.string().required().messages({
+            'string.empty': 'Check-out time is required.',
+            'any.required': 'Check-out time is required.'
+        }),
+        guestPolicies: Joi.array().items(Joi.string()).optional()
+    }).required().messages({
+        'any.required': 'Hotel policies are required.'
+    }),
+    categoryId: Joi.string()
+        .required()
+        .custom((value, helpers) => {
+            // Check if value is a valid MongoDB ObjectId
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                return helpers.message("Invalid Category ID format.");
+            }
+            return value; 
+        })
+        .messages({
+            'any.required': 'Category is required.',
+            'string.empty': 'Category is required.',
+        })
+})
+
 const validateUserSignup = Joi.object({
     email: Joi.string()
         .email({ minDomainSegments: 2})
@@ -84,12 +187,11 @@ const validateUserSignup = Joi.object({
         })       
 })
 
-
-
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
     validateCategory,
+    validateHomestay,
     validateUserSignup
 }
