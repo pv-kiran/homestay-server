@@ -1,5 +1,5 @@
 const generateOtp = () => {
-    return 1000 + Math.floor(Math.random() * 900000);
+    return 100000 + Math.floor(Math.random() * 900000);
 }
 
 const getOtpExpiry = (durationInMinutes = 2) => {

@@ -55,8 +55,8 @@ const validateOtp = Joi.object({
         .required()
         .messages({
             'number.base': 'OTP must be a number',
-            'number.min': 'OTP must be a 4-digit number',
-            'number.max': 'OTP must be a 4-digit number',
+            'number.min': 'OTP must be a 6-digit number',
+            'number.max': 'OTP must be a 6-digit number',
             'any.required': 'OTP is required'
         })
 })
@@ -187,11 +187,24 @@ const validateUserSignup = Joi.object({
         })       
 })
 
+// Custom ObjectId validation rule
+const objectIdValidation = (value, helpers) => {
+    if (!mongoose.isValidObjectId(value)) {
+        return helpers.message('Invalid ID format');
+    }
+    return value;
+};
+
+const validateHomestayId = Joi.object({
+    homestayId: Joi.string().custom(objectIdValidation).required()
+});
+
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,
     validateOtp,
     validateCategory,
     validateHomestay,
-    validateUserSignup
+    validateUserSignup,
+    validateHomestayId
 }

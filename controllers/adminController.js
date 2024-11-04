@@ -2,11 +2,11 @@ const Admin = require("../models/admin");
 const Category = require('../models/category');
 const Homestay = require('../models/homestays')
 const {transporter} = require('../utils/emailHelper');
-const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, validateHomestay} = require('../utils/validationHelper');
+const {validateAdminLogin, validateAdminSignup, validateOtp, validateCategory, validateHomestay, validateHomestayId} = require('../utils/validationHelper');
 const { getHashedPassword, verifyPassword } = require('../utils/passwordHelper');
 const {generateOtp, getOtpExpiry} = require('../utils/otpHelper');
 const {getToken} = require('../utils/jwtHelper');
-const {generateOtpEmailTemplate} = require('../templates/otpEmailTemplate');
+const {generateAdminOtpEmailTemplate, generateAdminWelcomeEmailTemplate} = require('../templates/otpEmailTemplate');
 const {cloudinary} = require('../utils/cloudinaryHelper');
 const {upload} = require('../utils/multerHelper');
 
@@ -23,41 +23,78 @@ const adminSignUp = async (req,res) => {
     try {
         const adminExists = await Admin.findOne({email: email});
         if(adminExists){
-            return res.status(400).json({
-                message: 'Email id already exists !'
-            })
+            if (adminExists.isVerified) {
+                return res.status(400).json({
+                    message: 'Email ID already exists!',
+                    isVerified: adminExists.isVerified
+                });
+            }
+            else {
+                const currentTime = Date.now();
+                if (adminExists.otpExpiry > currentTime) {
+                    return res.status(400).json({
+                        message: 'Enter OTP to finish signup.',
+                        isVerified: adminExists.isVerified
+                    });
+                }
+                else {
+                    const otp = generateOtp();
+                    const otpExpiry = getOtpExpiry();
+
+                    adminExists.otp = otp;
+                    adminExists.otpExpiry = otpExpiry;
+                    await adminExists.save();
+
+                    // Resend OTP
+                    const mailOptions = {
+                        from: 'admin@gmail.com',
+                        to: `${email}`,
+                        subject: 'ADMIN SIGNUP - OTP VERIFICATION',
+                        html: generateAdminOtpEmailTemplate(email, otp)
+                    };
+
+                    await transporter.sendMail(mailOptions);
+
+                    return res.status(201).json({
+                        success: true,
+                        message: 'OTP has expired. A new OTP has been sent to your email.',
+                        isVerified: adminExists.isVerified
+                    });
+                }
+            }
         }
+        else {
+            const encPassword = await getHashedPassword(password);
+            const otp = generateOtp();
+            const otpExpiry = getOtpExpiry();
+            
+            const newAdmin = await Admin.create({
+                name: name ,
+                email: email ,
+                password: encPassword ,
+                otp: otp ,
+                otpExpiry: otpExpiry
+            });
 
-        const encPassword = await getHashedPassword(password);
-        const otp = generateOtp();
-        const otpExpiry = getOtpExpiry();
-        
-        const newAdmin = await Admin.create({
-            name: name ,
-            email: email ,
-            password: encPassword ,
-            otp: otp ,
-            otpExpiry: otpExpiry
-        });
+            // OTP Send
+            const mailOptions = {
+                from: 'admin@gmail.com',
+                to: `${email}`,
+                subject: 'ADMIN SIGNUP - OTP VERIFICATION',
+                html: generateAdminOtpEmailTemplate(email, otp)
+            };
 
-        // OTP Send
-        const mailOptions = {
-            from: 'admin@gmail.com',
-            to: `${email}`,
-            subject: 'OTP VERIFICATION',
-            html: generateOtpEmailTemplate(name, otp)
-        };
-
-        await transporter.sendMail(mailOptions);
-        
-        return res.status(201).json({
-            success: true ,
-            admin: {
-                _id: newAdmin._id,
-                email: newAdmin.email
-            },
-            message: 'Signup successful! Please check your email for OTP verification.',
-        });
+            await transporter.sendMail(mailOptions);
+            
+            return res.status(201).json({
+                success: true ,
+                admin: {
+                    _id: newAdmin._id,
+                    email: newAdmin.email
+                },
+                message: 'Signup successful! Please check your email for OTP verification.',
+            });
+        }
 
     } catch(e) {
         if (e.name === 'ValidationError') {
@@ -97,18 +134,28 @@ const adminOtpVerify = async (req,res) => {
                         admin[0].otp = undefined;
                         admin[0].otpExpiry = undefined;
                         await admin[0].save();
-                    return res.json({
+
+                        const mailOptions = {
+                            from: 'admin@gmail.com',
+                            to: `${email}`,
+                            subject: 'OTP VERIFICATION SUCCESSFUL',
+                            html: generateAdminWelcomeEmailTemplate(admin[0].name)
+                        };
+            
+                        await transporter.sendMail(mailOptions);
+
+                    return res.status(200).json({
                         success: true,
                         message: "OTP verification successful"
                     })
                 } else {
-                    return res.json({
+                    return res.status(400).json({
                         success: true,
                         message: "OTP already expired !"
                     })
                 }
         } else {
-            return res.json({
+            return res.status(400).json({
                 success: true,
                 message: "Invalid OTP !"
             })
@@ -138,6 +185,12 @@ const adminLogin = async (req, res) => {
         const adminExists = await Admin.findOne({ email: email });
 
         if (adminExists) {
+            if (!adminExists.isVerified) {
+                return res.status(400).json({
+                    message: 'Please complete OTP verification to login.',
+                    isVerified: adminExists.isVerified
+                });
+            }
             const isCorrectPassword = await verifyPassword(password, adminExists.password);
             if (isCorrectPassword) {
 
@@ -158,7 +211,8 @@ const adminLogin = async (req, res) => {
                 admin: {
                     _id: adminExists._id,
                     email: adminExists.email,
-                    token: token
+                    token: token,
+                    isVerified: adminExists.isVerified
                 },
                 message: 'Admin Login Successful'
             });
@@ -182,6 +236,29 @@ const adminLogin = async (req, res) => {
     }
 
 }
+
+//ADMIN LOGOUT
+const adminLogout = async (req, res) => {
+    try {
+        // Clear the token cookie by setting it to an empty string and expiring immediately
+        res.cookie('token', '', {
+            expires: new Date(0),  // Expire immediately
+            httpOnly: true,       // Prevent client-side JavaScript from accessing the cookie
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Admin Logout successful',
+        });
+    } catch (error) {
+        console.error('Error during logout:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred during logout',
+        });
+    }
+};
+
 
 //ADMIN CATEGORY MANAGEMENT - ADD
 const addCategory = async (req, res) => {
@@ -308,6 +385,32 @@ const toggleCategoryStatus = async (req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+//ADMIN CATEGORY MANAGEMENT - GET ALL CATEGORIES
+const getAllCategories = async (req, res) => {
+    try {
+        const categories = await Category.find();
+
+        if (!categories.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'No categories found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: categories
+        });
+    } catch (error) {
+        console.error('Error retrieving categories:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving categories'
+        });
     }
 };
 
@@ -483,7 +586,70 @@ const toggleHomestayStatus = async (req, res) => {
     }
 };
 
+//ADMIN - FETCH HOMESTAY BY ID
+const getHomestayById = async (req, res) => {
 
+    const { error } = validateHomestayId.validate(req.params);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    const { homestayId } = req.params;
+
+    try {
+        const homestay = await Homestay.findById(homestayId)
+            .select('-createdAt') // Exclude 'createdAt'
+            .populate('category'); // Populate 'category'
+
+        if (!homestay) {
+            return res.status(404).json({
+                success: false,
+                message: 'Homestay not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: homestay
+        });
+    } catch (error) {
+        console.error('Error retrieving homestay:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving the homestay'
+        });
+    }
+};
+
+//ADMIN - FETCH ALL HOMESTAYS
+const getAllHomestays = async (req, res) => {
+    try {
+        const homestays = await Homestay.find()
+            .select('-createdAt') // Exclude 'createdAt' field
+            .populate('category'); // Populate 'category' field
+
+        if (!homestays.length) {
+            return res.status(404).json({
+                success: false,
+                message: 'No homestays found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: homestays
+        });
+    } catch (error) {
+        console.error('Error retrieving homestays:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving homestays'
+        });
+    }
+};
 
 
 
@@ -491,10 +657,14 @@ module.exports = {
     adminSignUp,
     adminOtpVerify,
     adminLogin,
+    adminLogout,
     addCategory,
     updateCategory,
     toggleCategoryStatus,
     addHomestay,
     updateHomestay,
-    toggleHomestayStatus
+    toggleHomestayStatus,
+    getHomestayById,
+    getAllHomestays,
+    getAllCategories,
 }
