@@ -245,8 +245,6 @@ const userValidationSchema = Joi.object({
         })
 });
 
-
-
 module.exports = {
     validateAdminSignup,
     validateAdminLogin,

@@ -99,6 +99,7 @@ const userOtpVerify = async (req,res) => {
                         success: true,
                         userDetails: {
                             token,
+                            userId:user?.id,
                             email: user?.email,
                             accountCreationStatus: user?.accountCreationStatus
                         },
@@ -180,6 +181,7 @@ const googleSignIn  =  async (req, res) => {
         success: true,
         userDetails: {
             token,
+            userId:user?.id,
             email: user?.email,
             name: user?.fullName,
             accountCreationStatus: user?.accountCreationStatus
