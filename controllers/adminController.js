@@ -24,6 +24,13 @@ const adminSignUp = async (req,res) => {
         const adminExists = await Admin.findOne({email: email});
         if(adminExists){
             if (adminExists.isVerified) {
+                const isCorrectPassword = await verifyPassword(password, adminExists.password);
+                if (!isCorrectPassword) {
+                    return res.status(401).json({
+                        message: 'Incorrect password. Please try again.',
+                        isVerified: adminExists.isVerified
+                    });
+                }
                 return res.status(400).json({
                     message: 'Email ID already exists!',
                     isVerified: adminExists.isVerified
@@ -49,7 +56,7 @@ const adminSignUp = async (req,res) => {
                     const mailOptions = {
                         from: 'admin@gmail.com',
                         to: `${email}`,
-                        subject: 'ADMIN SIGNUP - OTP VERIFICATION',
+                        subject: 'ADMIN SIGNUP - RESEND OTP',
                         html: generateAdminOtpEmailTemplate(email, otp)
                     };
 
