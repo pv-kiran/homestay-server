@@ -33,10 +33,10 @@ const { authenticateToken } = require("../middleware/authMiddleware");
 
 const fields = [
   { name: "images", maxCount: 5 },
-  ...Array.from({ length: 10 }, (_, i) => ({
-    name: `amenities[${i}].icon`,
-    maxCount: 1,
-  })),
+//   ...Array.from({ length: 10 }, (_, i) => ({
+//     name: `amenities[${i}].icon`,
+//     maxCount: 1,
+//   })),
 ];
 
 router.post("/auth/signup", adminSignUp);

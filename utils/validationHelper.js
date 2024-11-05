@@ -126,16 +126,21 @@ const validateHomestay = Joi.object({
     .messages({
       "any.required": "Address is required.",
     }),
-  amenities: Joi.array()
+    amenityIds: Joi.array()
     .items(
-      Joi.object({
-        title: Joi.string().required(),
-        icon: Joi.string().uri().optional(),
-      })
+      Joi.string()
+        .required()
+        .custom((value, helpers) => {
+          if (!mongoose.Types.ObjectId.isValid(value)) {
+            return helpers.message("Invalid Amenity ID format.");
+          }
+          return value;
+        })
     )
     .required()
     .messages({
-      "any.required": "Amenities are required.",
+      "array.base": "Amenities must be an array.",
+      "any.required": "At least one amenity is required.",
     }),
   noOfRooms: Joi.number().integer().required().messages({
     "number.base": "Number of rooms must be a number.",

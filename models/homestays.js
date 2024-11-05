@@ -57,21 +57,11 @@ const homestaySchema = new mongoose.Schema({
             },
         },
     },
-    // amenities: [{
-    //     title: {
-    //         type: String,
-    //         required: true,
-    //     },
-    //     icon: {
-    //         type: String, 
-    //         required: true,
-    //     },
-    // }],
-    amenities: {
+    amenities: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Amenity',
-        required: true, 
-    },
+        // required: true, 
+    }],
     noOfRooms: {
         type: Number,
         required: true,

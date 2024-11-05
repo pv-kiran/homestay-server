@@ -518,7 +518,17 @@ const addHomestay = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
-    homestayData.category = category._id;
+    else {
+      homestayData.category = category._id;
+    }
+    // Validate and assign amenities
+    const amenityIds = homestayData.amenityIds || [];
+    const amenities = await Amenity.find({ _id: { $in: amenityIds } });
+
+    if (amenities.length !== amenityIds.length) {
+      return res.status(404).json({ message: "One or more amenities not found" });
+    }
+    homestayData.amenities = amenities.map(amenity => amenity._id);
 
     const existingHomestay = await Homestay.findOne({
       title: homestayData.title,
@@ -543,24 +553,6 @@ const addHomestay = async (req, res) => {
     }
     homestayData.images = uploadedImages;
 
-    if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
-      const updatedAmenities = await Promise.all(
-        homestayData.amenities.map(async (amenity, index) => {
-          const fileKey = `amenities[${index}].icon`;
-          if (req.files[fileKey]) {
-            const iconFile = req.files[fileKey][0];
-            const iconUploadResult = await cloudinary.uploader.upload(
-              iconFile.path,
-              { folder: "amenities/icons" }
-            );
-            amenity.icon = iconUploadResult.secure_url;
-          }
-          return amenity;
-        })
-      );
-      homestayData.amenities = updatedAmenities;
-    }
-
     const newHomestay = new Homestay(homestayData);
     await newHomestay.save();
     return res.status(201).json({
@@ -569,6 +561,7 @@ const addHomestay = async (req, res) => {
       homestay: newHomestay,
     });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ message: "Error adding homestay" });
   }
 };
@@ -576,13 +569,13 @@ const addHomestay = async (req, res) => {
 //ADMIN - UPDATE HOMESTAY
 const updateHomestay = async (req, res) => {
   try {
-    const { error } = validateHomestay.validate(req.body); // Assume same validation function
+    const { error } = validateHomestay.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
 
     const homestayData = req.body;
-    const { homestayId } = req.params; // Assume homestay ID is provided in the URL
+    const { homestayId } = req.params; 
 
     // Find the existing homestay
     const existingHomestay = await Homestay.findById(homestayId);
@@ -595,7 +588,18 @@ const updateHomestay = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
-    homestayData.category = category._id;
+    else {
+      homestayData.category = category._id;
+    }
+
+    // Validate and assign amenities
+    const amenityIds = homestayData.amenityIds || [];
+    const amenities = await Amenity.find({ _id: { $in: amenityIds } });
+
+    if (amenities.length !== amenityIds.length) {
+      return res.status(404).json({ message: "One or more amenities not found" });
+    }
+    homestayData.amenities = amenities.map(amenity => amenity._id);
 
     // Check for duplicate homestay with the same title and address
     const duplicateHomestay = await Homestay.findOne({
@@ -624,29 +628,6 @@ const updateHomestay = async (req, res) => {
       );
     }
     homestayData.images = uploadedImages;
-
-    // Update amenities
-    if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
-      const updatedAmenities = await Promise.all(
-        homestayData.amenities.map(async (amenity, index) => {
-          if (req.files[`amenities[${index}].icon`]) {
-            const iconFile = req.files[`amenities[${index}].icon`][0];
-            const iconUploadResult = await cloudinary.uploader.upload(
-              iconFile.path,
-              { folder: "amenities/icons" }
-            );
-            amenity.icon = iconUploadResult.secure_url;
-          } else {
-            const existingAmenity = existingHomestay.amenities[index];
-            if (existingAmenity) {
-              amenity.icon = existingAmenity.icon; // Retain the existing icon if not updated
-            }
-          }
-          return amenity;
-        })
-      );
-      homestayData.amenities = updatedAmenities;
-    }
 
     // Update the homestay
     Object.assign(existingHomestay, homestayData); // Merge new data
@@ -704,7 +685,8 @@ const getHomestayById = async (req, res) => {
   try {
     const homestay = await Homestay.findById(homestayId)
       .select("-createdAt") // Exclude 'createdAt'
-      .populate("category"); // Populate 'category'
+      .populate("category")
+      .populate("amenities");
 
     if (!homestay) {
       return res.status(404).json({
@@ -731,7 +713,8 @@ const getAllHomestays = async (req, res) => {
   try {
     const homestays = await Homestay.find()
       .select("-createdAt") // Exclude 'createdAt' field
-      .populate("category"); // Populate 'category' field
+      .populate("category")
+      .populate("amenities");
 
     if (!homestays.length) {
       return res.status(404).json({
