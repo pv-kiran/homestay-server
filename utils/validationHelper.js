@@ -260,6 +260,10 @@ const validateHomestayId = Joi.object({
   homestayId: Joi.string().custom(objectIdValidation).required(),
 });
 
+const validateUserId = Joi.object({
+    userId: Joi.string().custom(objectIdValidation).required(),
+  });
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -270,5 +274,6 @@ module.exports = {
   userValidationSchema,
   validateHomestayId,
   validateEmail,
-  validateAmenity
+  validateAmenity,
+  validateUserId
 };

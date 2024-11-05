@@ -20,7 +20,10 @@ const {
   addAmenities,
   updateAmenity,
   toggleAmenityStatus,
-  getAllAmenities
+  getAllAmenities,
+  getAllUsers,
+  getUserById,
+  toggleUserStatus,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -62,5 +65,10 @@ router.put(
 router.put("/toggle-homestay/:homestayId", toggleHomestayStatus);
 router.get("/get-homestay/:homestayId", getHomestayById);
 router.get("/get-allhomestays", getAllHomestays);
+
+router.get("/get-allusers", getAllUsers);
+router.get("/get-user/:userId", getUserById);
+router.put("/toggle-user/:userId", toggleUserStatus);
+
 
 module.exports = router;

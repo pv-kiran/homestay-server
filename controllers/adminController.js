@@ -2,6 +2,7 @@ const Admin = require("../models/admin");
 const Category = require("../models/category");
 const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
+const User = require("../models/user");
 const { transporter } = require("../utils/emailHelper");
 const {
   validateAdminLogin,
@@ -11,7 +12,8 @@ const {
   validateHomestay,
   validateHomestayId,
   validateEmail,
-  validateAmenity
+  validateAmenity,
+  validateUserId
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -899,6 +901,92 @@ const getAllAmenities = async (req, res) => {
   }
 };
 
+//ADMIN - GET ALL USERS
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-otp -otpExpiry'); 
+
+    if (!users.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No users found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error retrieving users:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while retrieving users',
+    });
+  }
+};
+
+
+//ADMIN - GET USER BY ID
+const getUserById = async (req, res) => {
+  const { error } = validateUserId.validate(req.params);
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.details[0].message,
+    });
+  }
+
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-otp -otpExpiry');
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User data retrieved successfully.",
+      user,
+    });
+  } catch (error) {
+      return res.status(500).json({
+        message: "An error occurred while retrieving user data.",
+        error: error.message,
+      });
+  }
+}
+
+
+//ADMIN - TOGGLE USER STATUS - DISABLE & REACTIVATION
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Toggle the isDisabled state
+    user.isDisabled = !user.isDisabled;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: updatedUser.isDisabled
+        ? "User disabled successfully"
+        : "User reactivated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -917,5 +1005,8 @@ module.exports = {
   addAmenities,
   updateAmenity,
   toggleAmenityStatus,
-  getAllAmenities
+  getAllAmenities,
+  getAllUsers,
+  getUserById,
+  toggleUserStatus
 };
