@@ -1,25 +1,24 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { homestayUpload } = require('../utils/multerHelper'); // Ensure correct path
+const { homestayUpload } = require("../utils/multerHelper"); // Ensure correct path
 
-
-const { 
-    adminSignUp, 
-    adminOtpVerify, 
-    adminLogin, 
-    adminLogout,
-    addCategory, 
-    updateCategory, 
-    toggleCategoryStatus, 
-    getAllCategories,
-    addHomestay, 
-    updateHomestay, 
-    toggleHomestayStatus, 
-    getHomestayById, 
-    getAllHomestays 
-} = require('../controllers/adminController');
-const { authenticateToken } = require('../middleware/authMiddleware');
-
+const {
+  adminSignUp,
+  adminOtpVerify,
+  adminLogin,
+  adminLogout,
+  addCategory,
+  updateCategory,
+  toggleCategoryStatus,
+  getAllCategories,
+  addHomestay,
+  updateHomestay,
+  toggleHomestayStatus,
+  getHomestayById,
+  getAllHomestays,
+  adminResendOtp,
+} = require("../controllers/adminController");
+const { authenticateToken } = require("../middleware/authMiddleware");
 
 // router.post('/admin/add-homestay',homestayUpload.fields([
 //     { name: 'images', maxCount: 5 },
@@ -29,33 +28,31 @@ const { authenticateToken } = require('../middleware/authMiddleware');
 // router.post('/admin/add-homestay', homestayUpload.any(), addHomestay);
 
 const fields = [
-    { name: 'images', maxCount: 5 },
-    ...Array.from({ length: 10 }, (_, i) => ({ name: `amenities[${i}].icon`, maxCount: 1 }))
+  { name: "images", maxCount: 5 },
+  ...Array.from({ length: 10 }, (_, i) => ({
+    name: `amenities[${i}].icon`,
+    maxCount: 1,
+  })),
 ];
 
-router.post('/auth/signup', adminSignUp);
-router.post('/auth/otp/verify', adminOtpVerify);
-router.post('/auth/signin', adminLogin);
-router.post('/auth/logout', adminLogout);
-router.post('/add-category', addCategory);
-router.put('/edit-category/:categoryId', updateCategory);
-router.put('/toggle-category/:categoryId', toggleCategoryStatus);
-router.get('/get-allcategories', getAllCategories);
+router.post("/auth/signup", adminSignUp);
+router.post("/auth/otp/verify", adminOtpVerify);
+router.post("/auth/signin", adminLogin);
+router.post("/auth/otp/resend", adminResendOtp);
+router.post("/auth/logout", adminLogout);
+router.post("/add-category", addCategory);
+router.put("/edit-category/:categoryId", updateCategory);
+router.put("/toggle-category/:categoryId", toggleCategoryStatus);
+router.get("/get-allcategories", getAllCategories);
 
-
-router.post('/add-homestay', homestayUpload.fields(fields), addHomestay);
-router.put('/update-homestay/:homestayId', homestayUpload.fields(fields), updateHomestay);
-router.put('/toggle-homestay/:homestayId', toggleHomestayStatus);
-router.get('/get-homestay/:homestayId', getHomestayById);
-router.get('/get-allhomestays', getAllHomestays);
-
-
-
-
-
-
-
-
-
+router.post("/add-homestay", homestayUpload.fields(fields), addHomestay);
+router.put(
+  "/update-homestay/:homestayId",
+  homestayUpload.fields(fields),
+  updateHomestay
+);
+router.put("/toggle-homestay/:homestayId", toggleHomestayStatus);
+router.get("/get-homestay/:homestayId", getHomestayById);
+router.get("/get-allhomestays", getAllHomestays);
 
 module.exports = router;

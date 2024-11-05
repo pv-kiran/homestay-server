@@ -130,6 +130,60 @@ const userOtpVerify = async (req, res) => {
   }
 };
 
+const useResendOtp = async (req, res) => {
+  const { error } = validateUserSignup.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: error.details[0]?.message,
+    });
+  }
+
+  try {
+    const useExists = await User.findOne({ email: req.body?.email });
+    if (!useExists) {
+      return res.status(400).json({
+        message: "Email ID doesn't exists!",
+        isVerified: useExists.isVerified,
+      });
+    }
+    const otp = generateOtp();
+    const otpExpiry = getOtpExpiry();
+    useExists.otp = otp;
+    useExists.otpExpiry = otpExpiry;
+    await useExists.save();
+    const mailOptions = {
+      from: "admin@gmail.com",
+      to: `${req.body?.email}`,
+      subject: "OTP VERIFICATION",
+      html: generateOtpEmailTemplate(req.body?.email, otp),
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(201).json({
+      success: true,
+      message: "A new OTP has been sent to your email.",
+      admin: {
+        _id: useExists._id,
+        email: useExists.email,
+      },
+      otpExpiry: useExists.otpExpiry,
+      isVerified: useExists.isVerified,
+    });
+  } catch (err) {
+    console.log(err);
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ message: "Invalid input data" });
+    } else if (err.name === "MongoError") {
+      return res.status(500).json({ message: "Database error occurred" });
+    } else if (err.message.includes("sendMail")) {
+      return res.status(500).json({ message: "Error sending OTP email" });
+    } else {
+      return res.status(500).json({ message: "An unexpected error occurred" });
+    }
+  }
+};
+
 const googleSignIn = async (req, res) => {
   try {
     const { access_token } = req.body;
@@ -271,5 +325,6 @@ module.exports = {
   userOtpVerify,
   googleSignIn,
   userAccountCreation,
+  useResendOtp,
   userLogout,
 };

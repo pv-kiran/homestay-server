@@ -9,6 +9,7 @@ const {
   validateCategory,
   validateHomestay,
   validateHomestayId,
+  validateEmail,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -283,6 +284,61 @@ const adminLogout = async (req, res) => {
       success: false,
       message: "An error occurred during logout",
     });
+  }
+};
+
+// Admin Resend OTP
+const adminResendOtp = async (req, res) => {
+  const { error } = validateEmail.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: error.details[0]?.message,
+    });
+  }
+
+  try {
+    const adminExists = await Admin.findOne({ email: req.body?.email });
+    if (!adminExists) {
+      return res.status(400).json({
+        message: "Email ID doesn't exists!",
+        isVerified: adminExists.isVerified,
+      });
+    }
+    const otp = generateOtp();
+    const otpExpiry = getOtpExpiry();
+    adminExists.otp = otp;
+    adminExists.otpExpiry = otpExpiry;
+    await adminExists.save();
+    const mailOptions = {
+      from: "admin@gmail.com",
+      to: `${req.body?.email}`,
+      subject: "ADMIN SIGNUP - OTP VERIFICATION",
+      html: generateAdminOtpEmailTemplate(req.body?.email, otp),
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(201).json({
+      success: true,
+      message: "A new OTP has been sent to your email.",
+      admin: {
+        _id: adminExists._id,
+        email: adminExists.email,
+      },
+      otpExpiry: adminExists.otpExpiry,
+      isVerified: adminExists.isVerified,
+    });
+  } catch (err) {
+    console.log(err);
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ message: "Invalid input data" });
+    } else if (err.name === "MongoError") {
+      return res.status(500).json({ message: "Database error occurred" });
+    } else if (err.message.includes("sendMail")) {
+      return res.status(500).json({ message: "Error sending OTP email" });
+    } else {
+      return res.status(500).json({ message: "An unexpected error occurred" });
+    }
   }
 };
 
@@ -709,4 +765,5 @@ module.exports = {
   getHomestayById,
   getAllHomestays,
   getAllCategories,
+  adminResendOtp,
 };
