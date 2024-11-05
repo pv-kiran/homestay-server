@@ -19,7 +19,6 @@ const verifyPassword = async(password, securedPassword) => {
         }
         return isPasswordMatch;
     } catch (error) {
-        console.error(error);
     }
 };
 
