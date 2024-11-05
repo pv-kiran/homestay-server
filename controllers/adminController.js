@@ -1,6 +1,8 @@
 const Admin = require("../models/admin");
 const Category = require("../models/category");
+const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
+const User = require("../models/user");
 const { transporter } = require("../utils/emailHelper");
 const {
   validateAdminLogin,
@@ -10,6 +12,8 @@ const {
   validateHomestay,
   validateHomestayId,
   validateEmail,
+  validateAmenity,
+  validateUserId
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -245,6 +249,7 @@ const adminLogin = async (req, res) => {
               email: adminExists.email,
               token: token,
               isVerified: adminExists.isVerified,
+              role: adminExists.role,
             },
             message: "Admin Login Successful",
           });
@@ -516,7 +521,17 @@ const addHomestay = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
-    homestayData.category = category._id;
+    else {
+      homestayData.category = category._id;
+    }
+    // Validate and assign amenities
+    const amenityIds = homestayData.amenityIds || [];
+    const amenities = await Amenity.find({ _id: { $in: amenityIds } });
+
+    if (amenities.length !== amenityIds.length) {
+      return res.status(404).json({ message: "One or more amenities not found" });
+    }
+    homestayData.amenities = amenities.map(amenity => amenity._id);
 
     const existingHomestay = await Homestay.findOne({
       title: homestayData.title,
@@ -541,24 +556,6 @@ const addHomestay = async (req, res) => {
     }
     homestayData.images = uploadedImages;
 
-    if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
-      const updatedAmenities = await Promise.all(
-        homestayData.amenities.map(async (amenity, index) => {
-          const fileKey = `amenities[${index}].icon`;
-          if (req.files[fileKey]) {
-            const iconFile = req.files[fileKey][0];
-            const iconUploadResult = await cloudinary.uploader.upload(
-              iconFile.path,
-              { folder: "amenities/icons" }
-            );
-            amenity.icon = iconUploadResult.secure_url;
-          }
-          return amenity;
-        })
-      );
-      homestayData.amenities = updatedAmenities;
-    }
-
     const newHomestay = new Homestay(homestayData);
     await newHomestay.save();
     return res.status(201).json({
@@ -567,6 +564,7 @@ const addHomestay = async (req, res) => {
       homestay: newHomestay,
     });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ message: "Error adding homestay" });
   }
 };
@@ -574,13 +572,13 @@ const addHomestay = async (req, res) => {
 //ADMIN - UPDATE HOMESTAY
 const updateHomestay = async (req, res) => {
   try {
-    const { error } = validateHomestay.validate(req.body); // Assume same validation function
+    const { error } = validateHomestay.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
 
     const homestayData = req.body;
-    const { homestayId } = req.params; // Assume homestay ID is provided in the URL
+    const { homestayId } = req.params; 
 
     // Find the existing homestay
     const existingHomestay = await Homestay.findById(homestayId);
@@ -593,7 +591,18 @@ const updateHomestay = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
-    homestayData.category = category._id;
+    else {
+      homestayData.category = category._id;
+    }
+
+    // Validate and assign amenities
+    const amenityIds = homestayData.amenityIds || [];
+    const amenities = await Amenity.find({ _id: { $in: amenityIds } });
+
+    if (amenities.length !== amenityIds.length) {
+      return res.status(404).json({ message: "One or more amenities not found" });
+    }
+    homestayData.amenities = amenities.map(amenity => amenity._id);
 
     // Check for duplicate homestay with the same title and address
     const duplicateHomestay = await Homestay.findOne({
@@ -622,29 +631,6 @@ const updateHomestay = async (req, res) => {
       );
     }
     homestayData.images = uploadedImages;
-
-    // Update amenities
-    if (homestayData.amenities && Array.isArray(homestayData.amenities)) {
-      const updatedAmenities = await Promise.all(
-        homestayData.amenities.map(async (amenity, index) => {
-          if (req.files[`amenities[${index}].icon`]) {
-            const iconFile = req.files[`amenities[${index}].icon`][0];
-            const iconUploadResult = await cloudinary.uploader.upload(
-              iconFile.path,
-              { folder: "amenities/icons" }
-            );
-            amenity.icon = iconUploadResult.secure_url;
-          } else {
-            const existingAmenity = existingHomestay.amenities[index];
-            if (existingAmenity) {
-              amenity.icon = existingAmenity.icon; // Retain the existing icon if not updated
-            }
-          }
-          return amenity;
-        })
-      );
-      homestayData.amenities = updatedAmenities;
-    }
 
     // Update the homestay
     Object.assign(existingHomestay, homestayData); // Merge new data
@@ -702,7 +688,8 @@ const getHomestayById = async (req, res) => {
   try {
     const homestay = await Homestay.findById(homestayId)
       .select("-createdAt") // Exclude 'createdAt'
-      .populate("category"); // Populate 'category'
+      .populate("category")
+      .populate("amenities");
 
     if (!homestay) {
       return res.status(404).json({
@@ -729,7 +716,8 @@ const getAllHomestays = async (req, res) => {
   try {
     const homestays = await Homestay.find()
       .select("-createdAt") // Exclude 'createdAt' field
-      .populate("category"); // Populate 'category' field
+      .populate("category")
+      .populate("amenities");
 
     if (!homestays.length) {
       return res.status(404).json({
@@ -751,6 +739,254 @@ const getAllHomestays = async (req, res) => {
   }
 };
 
+//ADMIN - ADD AMENITIES
+const addAmenities = async (req, res) => {
+  upload.single("iconUrl")(req, res, async (error) => {
+    if (error) {
+      return res.status(500).json({
+        message: "Icon upload error",
+      });
+    }
+    try {
+      const { error } = validateAmenity.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+      const existingAmenity = await Amenity.findOne({
+        amenityName: req.body.amenityName,
+        isDisabled: false,
+      });
+      if (existingAmenity) {
+        return res
+          .status(400)
+          .json({ message: "Amenity with this name already exists" });
+      }
+
+      let iconUrl = "";
+      if (req.file) {
+        const icon = await cloudinary.uploader.upload(req.file.path);
+        iconUrl = icon.secure_url;
+      }
+
+      const newAmenity = new Amenity({
+        amenityName: req.body.amenityName,
+        iconUrl: iconUrl,
+      });
+
+      await newAmenity.save();
+      res.status(201).json({
+        success: true,
+        message: "Amenity created successfully",
+        amenity: newAmenity,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: "Internal server error",
+      });
+    }
+  });
+};
+
+
+//ADMIN - UPDATE AMENITY
+const updateAmenity = async (req, res) => {
+  upload.single("iconUrl")(req, res, async (uploadError) => {
+    if (uploadError) {
+      return res.status(500).json({ message: "Icon upload error" });
+    }
+
+    try {
+      const { error } = validateAmenity.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+
+      const { amenityId } = req.params;
+
+      // Check if a amenity with the same name exists (excluding the current amenity)
+      const existingAmenity = await Amenity.findOne({
+        amenityName: req.body.amenityName,
+        _id: { $ne: amenityId },
+        isDisabled: false,
+      });
+      if (existingAmenity) {
+        return res
+          .status(400)
+          .json({ message: "Amenity with this name already exists" });
+      }
+
+      // Handle icon upload if a new file is provided
+      let iconUrl = req.body.iconUrl; // default to existing iconUrl
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path);
+          iconUrl = result.secure_url;
+        } catch (cloudinaryError) {
+          return res
+            .status(500)
+            .json({ message: "Error in uploading icon to Cloudinary" });
+        }
+      }
+      // Update the amenity
+      const updatedAmenity = await Amenity.findByIdAndUpdate(
+        amenityId,
+        { amenityName: req.body.amenityName, iconUrl: iconUrl },
+        { new: true }
+      );
+
+      if (!updatedAmenity) {
+        return res.status(404).json({ message: "Amenity not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Amenity updated successfully",
+        amenity: updatedAmenity,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+};
+
+//ADMIN AMENITY MANAGEMENT - DISABLE & ENABLE
+const toggleAmenityStatus = async (req, res) => {
+  try {
+    const { amenityId } = req.params;
+    const amenity = await Amenity.findById(amenityId);
+
+    if (!amenity) {
+      return res.status(404).json({ message: "Amenity not found" });
+    }
+
+    // Toggle the isDisabled state
+    amenity.isDisabled = !amenity.isDisabled;
+
+    const updatedAmenity = await amenity.save();
+
+    res.status(200).json({
+      success: true,
+      message: updatedAmenity.isDisabled
+        ? "Amenity disabled successfully"
+        : "Amenity enabled successfully",
+      amenity: updatedAmenity,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//ADMIN AMENITY MANAGEMENT - GET ALL AMENITIES
+const getAllAmenities = async (req, res) => {
+  try {
+    const amenities = await Amenity.find();
+
+    if (!amenities.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No amenities found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: amenities,
+    });
+  } catch (error) {
+    console.error("Error retrieving amenities:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving amenities",
+    });
+  }
+};
+
+//ADMIN - GET ALL USERS
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-otp -otpExpiry'); 
+
+    if (!users.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No users found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error retrieving users:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while retrieving users',
+    });
+  }
+};
+
+
+//ADMIN - GET USER BY ID
+const getUserById = async (req, res) => {
+  const { error } = validateUserId.validate(req.params);
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.details[0].message,
+    });
+  }
+
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-otp -otpExpiry');
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User data retrieved successfully.",
+      user,
+    });
+  } catch (error) {
+      return res.status(500).json({
+        message: "An error occurred while retrieving user data.",
+        error: error.message,
+      });
+  }
+}
+
+
+//ADMIN - TOGGLE USER STATUS - DISABLE & REACTIVATION
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Toggle the isDisabled state
+    user.isDisabled = !user.isDisabled;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: updatedUser.isDisabled
+        ? "User disabled successfully"
+        : "User reactivated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -766,4 +1002,11 @@ module.exports = {
   getAllHomestays,
   getAllCategories,
   adminResendOtp,
+  addAmenities,
+  updateAmenity,
+  toggleAmenityStatus,
+  getAllAmenities,
+  getAllUsers,
+  getUserById,
+  toggleUserStatus
 };

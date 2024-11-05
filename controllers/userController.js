@@ -1,5 +1,7 @@
 const { default: axios } = require("axios");
 const User = require("../models/user");
+const Homestay = require("../models/homestays");
+const Category = require("../models/category");
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
 const { getToken } = require("../utils/jwtHelper");
@@ -67,6 +69,8 @@ const userSignup = async (req, res) => {
     }
   }
 };
+
+
 const userOtpVerify = async (req, res) => {
   const { error } = validateOtp.validate(req.body);
   if (error) {
@@ -320,6 +324,66 @@ const userLogout = async (req, res) => {
   }
 };
 
+//USER - GET ALL HOMESTAYS
+const getAllHomestays = async (req, res) => {
+  try {
+      const homestays = await Homestay.find()
+          .select('-createdAt') 
+          .populate({
+              path: 'category',
+              match: { isDisabled: false } 
+          })
+          .populate("amenities");
+
+      // Filter out homestays with no category or disabled category
+      const filteredHomestays = homestays.filter(homestay => homestay.category !== null);
+
+      if (!filteredHomestays.length) {
+          return res.status(404).json({
+              success: false,
+              message: 'No homestays found'
+          });
+      }
+
+      return res.status(200).json({
+          success: true,
+          data: filteredHomestays
+      });
+  } catch (error) {
+      console.error('Error retrieving homestays:', error);
+      return res.status(500).json({
+          success: false,
+          message: 'An error occurred while retrieving homestays'
+      });
+  }
+};
+
+//USER - GET ALL CATEGORIES
+const getAllCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({ isDisabled: false });
+
+    if (!categories.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No categories found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Error retrieving categories:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving categories",
+    });
+  }
+};
+
+
 module.exports = {
   userSignup,
   userOtpVerify,
@@ -327,4 +391,6 @@ module.exports = {
   userAccountCreation,
   useResendOtp,
   userLogout,
+  getAllHomestays,
+  getAllCategories,
 };

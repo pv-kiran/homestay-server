@@ -63,6 +63,16 @@ const validateCategory = Joi.object({
   }),
 });
 
+const validateAmenity = Joi.object({
+    amenityName: Joi.string().min(3).max(30).required().messages({
+      "string.base": "Amenity name should be a string",
+      "string.empty": "Amenity name cannot be empty",
+      "string.min": "Amenity name should have a minimum length of 3",
+      "string.max": "Amenity name should have a maximum length of 30",
+      "any.required": "Amenity name is required",
+    }),
+  });
+
 const validateHomestay = Joi.object({
   title: Joi.string().required().messages({
     "any.required": "Title is required.",
@@ -116,16 +126,21 @@ const validateHomestay = Joi.object({
     .messages({
       "any.required": "Address is required.",
     }),
-  amenities: Joi.array()
+    amenityIds: Joi.array()
     .items(
-      Joi.object({
-        title: Joi.string().required(),
-        icon: Joi.string().uri().optional(),
-      })
+      Joi.string()
+        .required()
+        .custom((value, helpers) => {
+          if (!mongoose.Types.ObjectId.isValid(value)) {
+            return helpers.message("Invalid Amenity ID format.");
+          }
+          return value;
+        })
     )
     .required()
     .messages({
-      "any.required": "Amenities are required.",
+      "array.base": "Amenities must be an array.",
+      "any.required": "At least one amenity is required.",
     }),
   noOfRooms: Joi.number().integer().required().messages({
     "number.base": "Number of rooms must be a number.",
@@ -245,6 +260,10 @@ const validateHomestayId = Joi.object({
   homestayId: Joi.string().custom(objectIdValidation).required(),
 });
 
+const validateUserId = Joi.object({
+    userId: Joi.string().custom(objectIdValidation).required(),
+  });
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -255,4 +274,6 @@ module.exports = {
   userValidationSchema,
   validateHomestayId,
   validateEmail,
+  validateAmenity,
+  validateUserId
 };

@@ -24,7 +24,11 @@ const userSchema = new mongoose.Schema({
     accountCreationStatus: {
         type: Boolean,
         default: false
-    }
+    },
+    isDisabled: {
+        type: Boolean,
+        default: false
+    },
 })
 
 
