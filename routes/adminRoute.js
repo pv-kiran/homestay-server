@@ -17,6 +17,10 @@ const {
   getHomestayById,
   getAllHomestays,
   adminResendOtp,
+  addAmenities,
+  updateAmenity,
+  toggleAmenityStatus,
+  getAllAmenities
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -44,6 +48,10 @@ router.post("/add-category", addCategory);
 router.put("/edit-category/:categoryId", updateCategory);
 router.put("/toggle-category/:categoryId", toggleCategoryStatus);
 router.get("/get-allcategories", getAllCategories);
+router.post("/add-amenities", addAmenities);
+router.put("/edit-amenity/:amenityId", updateAmenity);
+router.put("/toggle-amenity/:amenityId", toggleAmenityStatus);
+router.get("/get-allamenities", getAllAmenities);
 
 router.post("/add-homestay", homestayUpload.fields(fields), addHomestay);
 router.put(

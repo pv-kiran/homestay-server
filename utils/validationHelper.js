@@ -63,6 +63,16 @@ const validateCategory = Joi.object({
   }),
 });
 
+const validateAmenity = Joi.object({
+    amenityName: Joi.string().min(3).max(30).required().messages({
+      "string.base": "Amenity name should be a string",
+      "string.empty": "Amenity name cannot be empty",
+      "string.min": "Amenity name should have a minimum length of 3",
+      "string.max": "Amenity name should have a maximum length of 30",
+      "any.required": "Amenity name is required",
+    }),
+  });
+
 const validateHomestay = Joi.object({
   title: Joi.string().required().messages({
     "any.required": "Title is required.",
@@ -255,4 +265,5 @@ module.exports = {
   userValidationSchema,
   validateHomestayId,
   validateEmail,
+  validateAmenity
 };

@@ -1,5 +1,6 @@
 const Admin = require("../models/admin");
 const Category = require("../models/category");
+const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
 const { transporter } = require("../utils/emailHelper");
 const {
@@ -10,6 +11,7 @@ const {
   validateHomestay,
   validateHomestayId,
   validateEmail,
+  validateAmenity
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -751,6 +753,168 @@ const getAllHomestays = async (req, res) => {
   }
 };
 
+//ADMIN - ADD AMENITIES
+const addAmenities = async (req, res) => {
+  upload.single("iconUrl")(req, res, async (error) => {
+    if (error) {
+      return res.status(500).json({
+        message: "Icon upload error",
+      });
+    }
+    try {
+      const { error } = validateAmenity.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+      const existingAmenity = await Amenity.findOne({
+        amenityName: req.body.amenityName,
+        isDisabled: false,
+      });
+      if (existingAmenity) {
+        return res
+          .status(400)
+          .json({ message: "Amenity with this name already exists" });
+      }
+
+      let iconUrl = "";
+      if (req.file) {
+        const icon = await cloudinary.uploader.upload(req.file.path);
+        iconUrl = icon.secure_url;
+      }
+
+      const newAmenity = new Amenity({
+        amenityName: req.body.amenityName,
+        iconUrl: iconUrl,
+      });
+
+      await newAmenity.save();
+      res.status(201).json({
+        success: true,
+        message: "Amenity created successfully",
+        amenity: newAmenity,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: "Internal server error",
+      });
+    }
+  });
+};
+
+
+//ADMIN - UPDATE AMENITY
+const updateAmenity = async (req, res) => {
+  upload.single("iconUrl")(req, res, async (uploadError) => {
+    if (uploadError) {
+      return res.status(500).json({ message: "Icon upload error" });
+    }
+
+    try {
+      const { error } = validateAmenity.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
+
+      const { amenityId } = req.params;
+
+      // Check if a amenity with the same name exists (excluding the current amenity)
+      const existingAmenity = await Amenity.findOne({
+        amenityName: req.body.amenityName,
+        _id: { $ne: amenityId },
+        isDisabled: false,
+      });
+      if (existingAmenity) {
+        return res
+          .status(400)
+          .json({ message: "Amenity with this name already exists" });
+      }
+
+      // Handle icon upload if a new file is provided
+      let iconUrl = req.body.iconUrl; // default to existing iconUrl
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path);
+          iconUrl = result.secure_url;
+        } catch (cloudinaryError) {
+          return res
+            .status(500)
+            .json({ message: "Error in uploading icon to Cloudinary" });
+        }
+      }
+      // Update the amenity
+      const updatedAmenity = await Amenity.findByIdAndUpdate(
+        amenityId,
+        { amenityName: req.body.amenityName, iconUrl: iconUrl },
+        { new: true }
+      );
+
+      if (!updatedAmenity) {
+        return res.status(404).json({ message: "Amenity not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Amenity updated successfully",
+        amenity: updatedAmenity,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+};
+
+//ADMIN AMENITY MANAGEMENT - DISABLE & ENABLE
+const toggleAmenityStatus = async (req, res) => {
+  try {
+    const { amenityId } = req.params;
+    const amenity = await Amenity.findById(amenityId);
+
+    if (!amenity) {
+      return res.status(404).json({ message: "Amenity not found" });
+    }
+
+    // Toggle the isDisabled state
+    amenity.isDisabled = !amenity.isDisabled;
+
+    const updatedAmenity = await amenity.save();
+
+    res.status(200).json({
+      success: true,
+      message: updatedAmenity.isDisabled
+        ? "Amenity disabled successfully"
+        : "Amenity enabled successfully",
+      amenity: updatedAmenity,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//ADMIN AMENITY MANAGEMENT - GET ALL AMENITIES
+const getAllAmenities = async (req, res) => {
+  try {
+    const amenities = await Amenity.find();
+
+    if (!amenities.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No amenities found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: amenities,
+    });
+  } catch (error) {
+    console.error("Error retrieving amenities:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving amenities",
+    });
+  }
+};
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -766,4 +930,8 @@ module.exports = {
   getAllHomestays,
   getAllCategories,
   adminResendOtp,
+  addAmenities,
+  updateAmenity,
+  toggleAmenityStatus,
+  getAllAmenities
 };
