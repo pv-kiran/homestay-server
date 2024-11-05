@@ -6,6 +6,8 @@ const {
   userAccountCreation,
   userLogout,
   useResendOtp,
+  getAllHomestays,
+  getAllCategories,
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -15,5 +17,10 @@ router.post("/auth/otp/resend", useResendOtp);
 router.post("/auth/google/signin", googleSignIn);
 router.put("/account/setup/complete/:userId", userAccountCreation);
 router.get("/auth/signout", userLogout);
+
+router.get("/get-allhomestays", getAllHomestays);
+router.get("/get-allcategories", getAllCategories);
+
+
 
 module.exports = router;
