@@ -247,6 +247,7 @@ const adminLogin = async (req, res) => {
               email: adminExists.email,
               token: token,
               isVerified: adminExists.isVerified,
+              role: adminExists.role,
             },
             message: "Admin Login Successful",
           });
