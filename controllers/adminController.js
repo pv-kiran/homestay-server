@@ -570,15 +570,93 @@ const addHomestay = async (req, res) => {
 };
 
 //ADMIN - UPDATE HOMESTAY
+// const updateHomestay = async (req, res) => {
+//   try {
+//     const { error } = validateHomestay.validate(req.body);
+//     if (error) {
+//       return res.status(400).json({ message: error.details[0].message });
+//     }
+
+//     const homestayData = req.body;
+//     const { homestayId } = req.params; 
+
+//     // Find the existing homestay
+//     const existingHomestay = await Homestay.findById(homestayId);
+//     if (!existingHomestay) {
+//       return res.status(404).json({ message: "Homestay not found" });
+//     }
+
+//     // Check if category exists
+//     const category = await Category.findOne({ _id: homestayData.categoryId });
+//     if (!category) {
+//       return res.status(404).json({ message: "Category not found" });
+//     }
+//     else {
+//       homestayData.category = category._id;
+//     }
+
+//     // Validate and assign amenities
+//     const amenityIds = homestayData.amenityIds || [];
+//     const amenities = await Amenity.find({ _id: { $in: amenityIds } });
+
+//     if (amenities.length !== amenityIds.length) {
+//       return res.status(404).json({ message: "One or more amenities not found" });
+//     }
+//     homestayData.amenities = amenities.map(amenity => amenity._id);
+
+//     // Check for duplicate homestay with the same title and address
+//     const duplicateHomestay = await Homestay.findOne({
+//       _id: { $ne: homestayId }, // Exclude the current homestay
+//       title: homestayData.title,
+//       "address.street": homestayData.address.street,
+//       "address.city": homestayData.address.city,
+//       "address.zip": homestayData.address.zip,
+//     });
+//     if (duplicateHomestay) {
+//       return res.status(409).json({
+//         message: "A homestay with the same title and address already exists.",
+//       });
+//     }
+
+//     // Handle image uploads
+//     let uploadedImages = existingHomestay.images; // Keep existing images
+//     if (req.files && req.files.images) {
+//       console.log(req.files);
+//       const imageUploadPromises = req.files.images.map((file) =>
+//         cloudinary.uploader.upload(file.path, { folder: "homestays" })
+//       );
+
+//       const imageUploadResults = await Promise.all(imageUploadPromises);
+//       uploadedImages = uploadedImages.concat(
+//         imageUploadResults.map((result) => result.secure_url)
+//       );
+//     }
+//     homestayData.images = uploadedImages;
+
+//     // Update the homestay
+//     Object.assign(existingHomestay, homestayData); // Merge new data
+//     await existingHomestay.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Homestay updated successfully",
+//       homestay: existingHomestay,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ message: "Error updating homestay" });
+//   }
+// };
+
 const updateHomestay = async (req, res) => {
   try {
+    console.log(req.body)
     const { error } = validateHomestay.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
 
     const homestayData = req.body;
-    const { homestayId } = req.params; 
+    const { homestayId } = req.params;
 
     // Find the existing homestay
     const existingHomestay = await Homestay.findById(homestayId);
@@ -591,14 +669,11 @@ const updateHomestay = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
-    else {
-      homestayData.category = category._id;
-    }
+    homestayData.category = category._id;
 
     // Validate and assign amenities
     const amenityIds = homestayData.amenityIds || [];
     const amenities = await Amenity.find({ _id: { $in: amenityIds } });
-
     if (amenities.length !== amenityIds.length) {
       return res.status(404).json({ message: "One or more amenities not found" });
     }
@@ -606,7 +681,7 @@ const updateHomestay = async (req, res) => {
 
     // Check for duplicate homestay with the same title and address
     const duplicateHomestay = await Homestay.findOne({
-      _id: { $ne: homestayId }, // Exclude the current homestay
+      _id: { $ne: homestayId },
       title: homestayData.title,
       "address.street": homestayData.address.street,
       "address.city": homestayData.address.city,
@@ -619,21 +694,21 @@ const updateHomestay = async (req, res) => {
     }
 
     // Handle image uploads
-    let uploadedImages = existingHomestay.images; // Keep existing images
+    let uploadedImages = req.body.homestayImages ? req.body.homestayImages : [];
+
+    // Upload new images if present
     if (req.files && req.files.images) {
       const imageUploadPromises = req.files.images.map((file) =>
         cloudinary.uploader.upload(file.path, { folder: "homestays" })
       );
-
       const imageUploadResults = await Promise.all(imageUploadPromises);
       uploadedImages = uploadedImages.concat(
         imageUploadResults.map((result) => result.secure_url)
       );
     }
-    homestayData.images = uploadedImages;
 
-    // Update the homestay
-    Object.assign(existingHomestay, homestayData); // Merge new data
+    // Update the homestay with new data
+    Object.assign(existingHomestay, { ...homestayData, images: uploadedImages });
     await existingHomestay.save();
 
     return res.status(200).json({
@@ -642,6 +717,7 @@ const updateHomestay = async (req, res) => {
       homestay: existingHomestay,
     });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({ message: "Error updating homestay" });
   }
 };
