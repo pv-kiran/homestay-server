@@ -126,6 +126,7 @@ const validateHomestay = Joi.object({
     .messages({
       "any.required": "Address is required.",
     }),
+    homestayImages: Joi.array().items(Joi.string()).optional(),
     amenityIds: Joi.array()
     .items(
       Joi.string()
