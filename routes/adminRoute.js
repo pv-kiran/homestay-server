@@ -36,10 +36,10 @@ const { authenticateToken } = require("../middleware/authMiddleware");
 
 const fields = [
   { name: "images", maxCount: 5 },
-//   ...Array.from({ length: 10 }, (_, i) => ({
-//     name: `amenities[${i}].icon`,
-//     maxCount: 1,
-//   })),
+  //   ...Array.from({ length: 10 }, (_, i) => ({
+  //     name: `amenities[${i}].icon`,
+  //     maxCount: 1,
+  //   })),
 ];
 
 router.post("/auth/signup", adminSignUp);
@@ -50,11 +50,11 @@ router.post("/auth/logout", adminLogout);
 router.post("/add-category", addCategory);
 router.put("/edit-category/:categoryId", updateCategory);
 router.put("/toggle-category/:categoryId", toggleCategoryStatus);
-router.get("/get-allcategories", getAllCategories);
+router.post("/get-allcategories", getAllCategories);
 router.post("/add-amenities", addAmenities);
 router.put("/edit-amenity/:amenityId", updateAmenity);
 router.put("/toggle-amenity/:amenityId", toggleAmenityStatus);
-router.get("/get-allamenities", getAllAmenities);
+router.post("/get-allamenities", getAllAmenities);
 
 router.post("/add-homestay", homestayUpload.fields(fields), addHomestay);
 router.put(
@@ -64,7 +64,7 @@ router.put(
 );
 router.put("/toggle-homestay/:homestayId", toggleHomestayStatus);
 router.get("/get-homestay/:homestayId", getHomestayById);
-router.get("/get-allhomestays", getAllHomestays);
+router.post("/get-allhomestays", getAllHomestays);
 
 router.get("/get-allusers", getAllUsers);
 router.get("/get-user/:userId", getUserById);

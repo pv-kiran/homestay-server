@@ -486,7 +486,20 @@ const toggleCategoryStatus = async (req, res) => {
 //ADMIN CATEGORY MANAGEMENT - GET ALL CATEGORIES
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    console.log(searchParams);
+    const searchQuery = searchParams
+      ? { categoryName: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalCategories = await Category.countDocuments(searchQuery);
+
+    const categories = await Category.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData));
 
     if (!categories.length) {
       return res.status(404).json({
@@ -498,6 +511,10 @@ const getAllCategories = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: categories,
+      totalCategories,
+      totalPages: Math.ceil(totalCategories / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData,
     });
   } catch (error) {
     console.error("Error retrieving categories:", error);
@@ -570,83 +587,6 @@ const addHomestay = async (req, res) => {
 };
 
 //ADMIN - UPDATE HOMESTAY
-// const updateHomestay = async (req, res) => {
-//   try {
-//     const { error } = validateHomestay.validate(req.body);
-//     if (error) {
-//       return res.status(400).json({ message: error.details[0].message });
-//     }
-
-//     const homestayData = req.body;
-//     const { homestayId } = req.params; 
-
-//     // Find the existing homestay
-//     const existingHomestay = await Homestay.findById(homestayId);
-//     if (!existingHomestay) {
-//       return res.status(404).json({ message: "Homestay not found" });
-//     }
-
-//     // Check if category exists
-//     const category = await Category.findOne({ _id: homestayData.categoryId });
-//     if (!category) {
-//       return res.status(404).json({ message: "Category not found" });
-//     }
-//     else {
-//       homestayData.category = category._id;
-//     }
-
-//     // Validate and assign amenities
-//     const amenityIds = homestayData.amenityIds || [];
-//     const amenities = await Amenity.find({ _id: { $in: amenityIds } });
-
-//     if (amenities.length !== amenityIds.length) {
-//       return res.status(404).json({ message: "One or more amenities not found" });
-//     }
-//     homestayData.amenities = amenities.map(amenity => amenity._id);
-
-//     // Check for duplicate homestay with the same title and address
-//     const duplicateHomestay = await Homestay.findOne({
-//       _id: { $ne: homestayId }, // Exclude the current homestay
-//       title: homestayData.title,
-//       "address.street": homestayData.address.street,
-//       "address.city": homestayData.address.city,
-//       "address.zip": homestayData.address.zip,
-//     });
-//     if (duplicateHomestay) {
-//       return res.status(409).json({
-//         message: "A homestay with the same title and address already exists.",
-//       });
-//     }
-
-//     // Handle image uploads
-//     let uploadedImages = existingHomestay.images; // Keep existing images
-//     if (req.files && req.files.images) {
-//       console.log(req.files);
-//       const imageUploadPromises = req.files.images.map((file) =>
-//         cloudinary.uploader.upload(file.path, { folder: "homestays" })
-//       );
-
-//       const imageUploadResults = await Promise.all(imageUploadPromises);
-//       uploadedImages = uploadedImages.concat(
-//         imageUploadResults.map((result) => result.secure_url)
-//       );
-//     }
-//     homestayData.images = uploadedImages;
-
-//     // Update the homestay
-//     Object.assign(existingHomestay, homestayData); // Merge new data
-//     await existingHomestay.save();
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Homestay updated successfully",
-//       homestay: existingHomestay,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ message: "Error updating homestay" });
-//   }
-// };
-
 const updateHomestay = async (req, res) => {
   try {
     console.log(req.body)
@@ -739,9 +679,8 @@ const toggleHomestayStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Homestay has been ${
-        existingHomestay.isDisabled ? "disabled" : "enabled"
-      } successfully`,
+      message: `Homestay has been ${existingHomestay.isDisabled ? "disabled" : "enabled"
+        } successfully`,
       homestay: existingHomestay,
     });
   } catch (error) {
@@ -790,10 +729,22 @@ const getHomestayById = async (req, res) => {
 //ADMIN - FETCH ALL HOMESTAYS
 const getAllHomestays = async (req, res) => {
   try {
-    const homestays = await Homestay.find()
-      .select("-createdAt") // Exclude 'createdAt' field
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { title: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalHomestays = await Homestay.countDocuments(searchQuery);
+
+    const homestays = await Homestay.find(searchQuery)
+      .select("-createdAt")
       .populate("category")
-      .populate("amenities");
+      .populate("amenities")
+      .skip(skip)
+      .limit(parseInt(pagePerData));
 
     if (!homestays.length) {
       return res.status(404).json({
@@ -805,6 +756,10 @@ const getAllHomestays = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: homestays,
+      totalHomestays,
+      totalPages: Math.ceil(totalHomestays / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
     });
   } catch (error) {
     console.error("Error retrieving homestays:", error);
@@ -814,6 +769,7 @@ const getAllHomestays = async (req, res) => {
     });
   }
 };
+
 
 //ADMIN - ADD AMENITIES
 const addAmenities = async (req, res) => {
@@ -953,9 +909,22 @@ const toggleAmenityStatus = async (req, res) => {
 };
 
 //ADMIN AMENITY MANAGEMENT - GET ALL AMENITIES
+
 const getAllAmenities = async (req, res) => {
   try {
-    const amenities = await Amenity.find();
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { amenityName: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalAmenities = await Amenity.countDocuments(searchQuery);
+
+    const amenities = await Amenity.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData));
 
     if (!amenities.length) {
       return res.status(404).json({
@@ -967,20 +936,25 @@ const getAllAmenities = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: amenities,
+      totalAmenities,
+      totalPages: Math.ceil(totalAmenities / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
     });
   } catch (error) {
     console.error("Error retrieving amenities:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving amenities",
+      message: "An error occurred while retrieving amenities"
     });
   }
 };
 
+
 //ADMIN - GET ALL USERS
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-otp -otpExpiry'); 
+    const users = await User.find().select('-otp -otpExpiry');
 
     if (!users.length) {
       return res.status(404).json({
@@ -1017,7 +991,7 @@ const getUserById = async (req, res) => {
     const { userId } = req.params;
 
     const user = await User.findById(userId).select('-otp -otpExpiry');
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -1028,10 +1002,10 @@ const getUserById = async (req, res) => {
       user,
     });
   } catch (error) {
-      return res.status(500).json({
-        message: "An error occurred while retrieving user data.",
-        error: error.message,
-      });
+    return res.status(500).json({
+      message: "An error occurred while retrieving user data.",
+      error: error.message,
+    });
   }
 }
 
