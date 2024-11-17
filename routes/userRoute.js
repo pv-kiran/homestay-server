@@ -8,6 +8,7 @@ const {
   useResendOtp,
   getAllHomestays,
   getAllCategories,
+  getAvailableHomestayDistricts,
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -20,6 +21,8 @@ router.get("/auth/signout", userLogout);
 
 router.get("/get-allhomestays", getAllHomestays);
 router.get("/get-allcategories", getAllCategories);
+router.get("/get-all-locations", getAvailableHomestayDistricts);
+
 
 
 
