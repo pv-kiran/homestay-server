@@ -66,7 +66,7 @@ router.put("/toggle-homestay/:homestayId", toggleHomestayStatus);
 router.get("/get-homestay/:homestayId", getHomestayById);
 router.post("/get-allhomestays", getAllHomestays);
 
-router.get("/get-allusers", getAllUsers);
+router.post("/get-allusers", getAllUsers);
 router.get("/get-user/:userId", getUserById);
 router.put("/toggle-user/:userId", toggleUserStatus);
 

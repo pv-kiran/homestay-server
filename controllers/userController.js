@@ -325,36 +325,103 @@ const userLogout = async (req, res) => {
 };
 
 //USER - GET ALL HOMESTAYS
+// const getAllHomestays = async (req, res) => {
+//   try {
+//       const homestays = await Homestay.find()
+//           .select('-createdAt')
+//           .populate({
+//               path: 'category',
+//               match: { isDisabled: false }
+//           })
+//           .populate("amenities");
+
+//       // Filter out homestays with no category or disabled category
+//       const filteredHomestays = homestays.filter(homestay => homestay.category !== null);
+
+//       if (!filteredHomestays.length) {
+//           return res.status(404).json({
+//               success: false,
+//               message: 'No homestays found'
+//           });
+//       }
+
+//       return res.status(200).json({
+//           success: true,
+//           data: filteredHomestays
+//       });
+//   } catch (error) {
+//       console.error('Error retrieving homestays:', error);
+//       return res.status(500).json({
+//           success: false,
+//           message: 'An error occurred while retrieving homestays'
+//       });
+//   }
+// };
+
 const getAllHomestays = async (req, res) => {
   try {
-      const homestays = await Homestay.find()
-          .select('-createdAt') 
-          .populate({
-              path: 'category',
-              match: { isDisabled: false } 
-          })
-          .populate("amenities");
+    const { category, price, numberOfGuest, numberOfRooms } = req.body;
 
-      // Filter out homestays with no category or disabled category
-      const filteredHomestays = homestays.filter(homestay => homestay.category !== null);
+    // Build the filter object dynamically
+    const filter = {};
 
-      if (!filteredHomestays.length) {
-          return res.status(404).json({
-              success: false,
-              message: 'No homestays found'
-          });
-      }
+    // Category filter
+    if (category && category.length > 0) {
+      filter.category = { $in: category };
+    }
 
-      return res.status(200).json({
-          success: true,
-          data: filteredHomestays
+    // Price range filter
+    if (price && price.length === 2) {
+      filter.pricePerNight = {
+        $gte: price[0],
+        $lte: price[1]
+      };
+    }
+
+    // Number of guests filter
+    if (numberOfGuest && numberOfGuest.length === 2) {
+      filter.maxGuests = {
+        $gte: numberOfGuest[0],
+        $lte: numberOfGuest[1]
+      };
+    }
+
+    // Number of rooms filter
+    if (numberOfRooms && numberOfRooms.length === 2) {
+      filter.noOfRooms = {
+        $gte: numberOfRooms[0],
+        $lte: numberOfRooms[1]
+      };
+    }
+
+    // Ensure non-disabled homestays
+    filter.isDisabled = false;
+
+    const homestays = await Homestay.find(filter)
+      .select('-createdAt')
+      .populate({
+        path: 'category',
+        match: { isDisabled: false }
+      })
+      .populate("amenities");
+
+    if (!homestays.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No homestays found'
       });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: homestays
+    });
   } catch (error) {
-      console.error('Error retrieving homestays:', error);
-      return res.status(500).json({
-          success: false,
-          message: 'An error occurred while retrieving homestays'
-      });
+    console.error('Error retrieving homestays:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while retrieving homestays'
+    });
   }
 };
 

@@ -954,24 +954,47 @@ const getAllAmenities = async (req, res) => {
 //ADMIN - GET ALL USERS
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-otp -otpExpiry');
+    // Destructure pagination and search parameters from request body
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    // Build the search query for filtering users based on searchParams
+    const searchQuery = searchParams
+      ? { fullName: { $regex: searchParams, $options: "i" } } // Assuming 'name' is a field in your User schema
+      : {};
 
+    // Calculate the number of documents to skip based on the page number
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // Retrieve the total count of documents matching the search query
+    const totalUsers = await User.countDocuments(searchQuery);
+
+    // Retrieve users with pagination and search, excluding sensitive fields
+    const users = await User.find(searchQuery)
+      .select("-otp -otpExpiry") // Exclude sensitive fields
+      .skip(skip)
+      .limit(parseInt(pagePerData));
+
+    // Check if any users were found
     if (!users.length) {
       return res.status(404).json({
         success: false,
-        message: 'No users found',
+        message: "No users found",
       });
     }
 
+    // Return paginated and filtered users with total count
     return res.status(200).json({
       success: true,
       data: users,
+      totalUsers, // Total count of matched users for pagination
+      totalPages: Math.ceil(totalUsers / pagePerData), // Total number of pages
+      currentPage: pageNumber,
+      pageSize: pagePerData,
     });
   } catch (error) {
-    console.error('Error retrieving users:', error);
+    console.error("Error retrieving users:", error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while retrieving users',
+      message: "An error occurred while retrieving users",
     });
   }
 };

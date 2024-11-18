@@ -18,7 +18,7 @@ router.post("/auth/google/signin", googleSignIn);
 router.put("/account/setup/complete/:userId", userAccountCreation);
 router.get("/auth/signout", userLogout);
 
-router.get("/get-allhomestays", getAllHomestays);
+router.post("/get-allhomestays", getAllHomestays);
 router.get("/get-allcategories", getAllCategories);
 
 
