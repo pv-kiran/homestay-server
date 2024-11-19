@@ -10,7 +10,9 @@ const {
   validateUserSignup,
   validateOtp,
   userValidationSchema,
+  validateHomestayId,
 } = require("../utils/validationHelper");
+
 
 const userSignup = async (req, res) => {
   const { error } = validateUserSignup.validate(req.body);
@@ -357,10 +359,9 @@ const userLogout = async (req, res) => {
 //       });
 //   }
 // };
-
 const getAllHomestays = async (req, res) => {
   try {
-    const { category, price, numberOfGuest, numberOfRooms } = req.body;
+    const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms } = req.body;
 
     // Build the filter object dynamically
     const filter = {};
@@ -378,20 +379,19 @@ const getAllHomestays = async (req, res) => {
       };
     }
 
-    // Number of guests filter
-    if (numberOfGuest && numberOfGuest.length === 2) {
-      filter.maxGuests = {
-        $gte: numberOfGuest[0],
-        $lte: numberOfGuest[1]
-      };
+    // Number of guests filter (get homestays that can accommodate >= specified guests)
+    if (numberOfGuest) {
+      filter.maxGuests = { $gte: numberOfGuest };
     }
 
-    // Number of rooms filter
-    if (numberOfRooms && numberOfRooms.length === 2) {
-      filter.noOfRooms = {
-        $gte: numberOfRooms[0],
-        $lte: numberOfRooms[1]
-      };
+    // Number of rooms filter (get homestays with >= specified rooms)
+    if (numberOfRooms) {
+      filter.noOfRooms = { $gte: numberOfRooms };
+    }
+
+    // Number of bathrooms filter (get homestays with >= specified bathrooms)
+    if (numberOfBathrooms) {
+      filter.noOfBathRooms = { $gte: numberOfBathrooms };
     }
 
     // Ensure non-disabled homestays
@@ -425,6 +425,7 @@ const getAllHomestays = async (req, res) => {
   }
 };
 
+
 //USER - GET ALL CATEGORIES
 const getAllCategories = async (req, res) => {
   try {
@@ -450,6 +451,43 @@ const getAllCategories = async (req, res) => {
   }
 };
 
+const getHomestayById = async (req, res) => {
+  const { error } = validateHomestayId.validate(req.params);
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.details[0].message,
+    });
+  }
+
+  const { homestayId } = req.params;
+
+  try {
+    const homestay = await Homestay.findById(homestayId)
+      .select("-createdAt") // Exclude 'createdAt'
+      .populate("category")
+      .populate("amenities");
+
+    if (!homestay) {
+      return res.status(404).json({
+        success: false,
+        message: "Homestay not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: homestay,
+    });
+  } catch (error) {
+    console.error("Error retrieving homestay:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving the homestay",
+    });
+  }
+};
+
 
 module.exports = {
   userSignup,
@@ -460,4 +498,5 @@ module.exports = {
   userLogout,
   getAllHomestays,
   getAllCategories,
+  getHomestayById
 };
