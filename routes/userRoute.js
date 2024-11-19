@@ -27,3 +27,4 @@ router.get("/get-all-locations", getAvailableHomestayDistricts);
 
 
 module.exports = router;
+
