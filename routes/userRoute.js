@@ -8,7 +8,8 @@ const {
   useResendOtp,
   getAllHomestays,
   getAllCategories,
-  getHomestayById
+  getHomestayById,
+  getAvailableHomestayDistricts,
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.get("/auth/signout", userLogout);
 router.post("/get-allhomestays", getAllHomestays);
 router.get("/homestay/:homestayId", getHomestayById);
 router.get("/get-allcategories", getAllCategories);
-
+router.get("/get-all-locations", getAvailableHomestayDistricts);
 
 
 module.exports = router;

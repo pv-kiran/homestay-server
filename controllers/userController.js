@@ -484,9 +484,37 @@ const getHomestayById = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving the homestay",
+    })
+  };
+}
+
+
+//USER - GET ALL AVAILABLE DISTRICTS
+const getAvailableHomestayDistricts = async (req, res) => {
+  try {
+    const homestays = await Homestay.find({ isDisabled: false }).select('address.district');
+
+    if (!homestays.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No available homestays found'
+      });
+    }
+
+    const districts = homestays.map(homestay => homestay.address.district);
+
+    return res.status(200).json({
+      success: true,
+      data: districts
+    });
+  } catch (error) {
+    console.error('Error retrieving districts of homestays:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while retrieving districts of homestays'
     });
   }
-};
+}
 
 
 module.exports = {
@@ -498,5 +526,6 @@ module.exports = {
   userLogout,
   getAllHomestays,
   getAllCategories,
-  getHomestayById
-};
+  getHomestayById,
+  getAvailableHomestayDistricts
+}
