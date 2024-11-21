@@ -487,7 +487,7 @@ const toggleCategoryStatus = async (req, res) => {
 const getAllCategories = async (req, res) => {
   try {
 
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
     console.log(searchParams);
     const searchQuery = searchParams
       ? { categoryName: { $regex: searchParams, $options: "i" } }
@@ -729,7 +729,7 @@ const getHomestayById = async (req, res) => {
 //ADMIN - FETCH ALL HOMESTAYS
 const getAllHomestays = async (req, res) => {
   try {
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
 
     const searchQuery = searchParams
       ? { title: { $regex: searchParams, $options: "i" } }
@@ -912,7 +912,7 @@ const toggleAmenityStatus = async (req, res) => {
 
 const getAllAmenities = async (req, res) => {
   try {
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
 
     const searchQuery = searchParams
       ? { amenityName: { $regex: searchParams, $options: "i" } }
