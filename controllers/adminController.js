@@ -499,7 +499,8 @@ const getAllCategories = async (req, res) => {
 
     const categories = await Category.find(searchQuery)
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!categories.length) {
       return res.status(404).json({
@@ -744,7 +745,8 @@ const getAllHomestays = async (req, res) => {
       .populate("category")
       .populate("amenities")
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!homestays.length) {
       return res.status(404).json({
@@ -924,7 +926,8 @@ const getAllAmenities = async (req, res) => {
 
     const amenities = await Amenity.find(searchQuery)
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!amenities.length) {
       return res.status(404).json({
@@ -971,7 +974,8 @@ const getAllUsers = async (req, res) => {
     const users = await User.find(searchQuery)
       .select("-otp -otpExpiry") // Exclude sensitive fields
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     // Check if any users were found
     if (!users.length) {
