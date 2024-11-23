@@ -403,7 +403,8 @@ const getAllHomestays = async (req, res) => {
         path: 'category',
         match: { isDisabled: false }
       })
-      .populate("amenities");
+      .populate("amenities")
+      .sort({ createdAt: -1 });
 
     if (!homestays.length) {
       return res.status(404).json({
