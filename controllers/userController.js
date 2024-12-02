@@ -361,7 +361,9 @@ const userLogout = async (req, res) => {
 // };
 const getAllHomestays = async (req, res) => {
   try {
-    const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms } = req.body;
+    const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms, currency } = req.body;
+
+    console.log(currency);
 
     // Build the filter object dynamically
     const filter = {};
@@ -397,7 +399,7 @@ const getAllHomestays = async (req, res) => {
     // Ensure non-disabled homestays
     filter.isDisabled = false;
 
-    const homestays = await Homestay.find(filter)
+    let homestays = await Homestay.find(filter)
       .select('-createdAt')
       .populate({
         path: 'category',
@@ -405,6 +407,22 @@ const getAllHomestays = async (req, res) => {
       })
       .populate("amenities")
       .sort({ createdAt: -1 });
+
+
+    if (currency && currency.code !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`);
+
+        homestays = homestays.map(homestay => {
+          const convertedHomestay = homestay.toObject();
+          convertedHomestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
+          return convertedHomestay;
+        });
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+        // Optional: Return original prices if conversion fails
+      }
+    }
 
     if (!homestays.length) {
       return res.status(404).json({
