@@ -430,7 +430,7 @@ const getAllHomestays = async (req, res) => {
 //USER - GET ALL CATEGORIES
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ isDisabled: false });
+    const categories = await Category.find({ isDisabled: false }).sort({ createdAt: -1 });
 
     if (!categories.length) {
       return res.status(404).json({
