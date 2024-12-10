@@ -487,7 +487,7 @@ const toggleCategoryStatus = async (req, res) => {
 const getAllCategories = async (req, res) => {
   try {
 
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
     console.log(searchParams);
     const searchQuery = searchParams
       ? { categoryName: { $regex: searchParams, $options: "i" } }
@@ -499,7 +499,8 @@ const getAllCategories = async (req, res) => {
 
     const categories = await Category.find(searchQuery)
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!categories.length) {
       return res.status(404).json({
@@ -729,7 +730,7 @@ const getHomestayById = async (req, res) => {
 //ADMIN - FETCH ALL HOMESTAYS
 const getAllHomestays = async (req, res) => {
   try {
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
 
     const searchQuery = searchParams
       ? { title: { $regex: searchParams, $options: "i" } }
@@ -744,7 +745,8 @@ const getAllHomestays = async (req, res) => {
       .populate("category")
       .populate("amenities")
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!homestays.length) {
       return res.status(404).json({
@@ -912,7 +914,7 @@ const toggleAmenityStatus = async (req, res) => {
 
 const getAllAmenities = async (req, res) => {
   try {
-    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
 
     const searchQuery = searchParams
       ? { amenityName: { $regex: searchParams, $options: "i" } }
@@ -924,7 +926,8 @@ const getAllAmenities = async (req, res) => {
 
     const amenities = await Amenity.find(searchQuery)
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     if (!amenities.length) {
       return res.status(404).json({
@@ -971,7 +974,8 @@ const getAllUsers = async (req, res) => {
     const users = await User.find(searchQuery)
       .select("-otp -otpExpiry") // Exclude sensitive fields
       .skip(skip)
-      .limit(parseInt(pagePerData));
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
 
     // Check if any users were found
     if (!users.length) {

@@ -433,6 +433,7 @@ const getAllHomestays = async (req, res) => {
       checkOut,
     } = req.body;
 
+
     // Build the filter object dynamically
     const filter = {};
 
@@ -512,11 +513,10 @@ const getAllHomestays = async (req, res) => {
       .sort({ createdAt: -1 });
 
     // Handle currency conversion if a different currency is specified
+
     if (currency && currency.code !== 'INR') {
       try {
-        const { data } = await axios.get(
-          `https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`
-        );
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`);
 
         homestays = homestays.map(homestay => {
           const convertedHomestay = homestay.toObject();
@@ -525,7 +525,6 @@ const getAllHomestays = async (req, res) => {
         });
       } catch (conversionError) {
         console.error('Currency conversion error:', conversionError);
-        // Optional: Return original prices if conversion fails
       }
     }
 
