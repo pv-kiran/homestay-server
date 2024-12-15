@@ -11,6 +11,7 @@ const {
   validateOtp,
   userValidationSchema,
   validateHomestayId,
+  validateUserUpdate,
 } = require("../utils/validationHelper");
 const Booking = require("../models/booking");
 
@@ -555,7 +556,7 @@ const getAllHomestays = async (req, res) => {
 //USER - GET ALL CATEGORIES
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ isDisabled: false });
+    const categories = await Category.find({ isDisabled: false }).sort({ createdAt: -1 });
 
     if (!categories.length) {
       return res.status(404).json({
@@ -709,6 +710,66 @@ const bookHomestay = async (req, res) => {
   }
 };
 
+//USER - GET PROFILE DATA
+const getUserById = async (req, res) => {
+  try {
+    const userId = req.userId
+    const user = await User.findOne({_id:userId});
+    if(!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    res.status(200).json({
+      success: true,
+      user
+    })
+  } catch (error) {
+    console.error("Error retrieving user data:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving the user data",
+    })
+  }
+}
+
+
+//USER - PROFILE UPDATION
+const updateUserData = async (req, res) => {  
+  try {
+    const { error } = validateUserUpdate.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const userId = req.userId; 
+    const { address, phone, gender } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    if (address) user.address = address;
+    if (phone) user.phone = phone;
+    if (gender) user.gender = gender;
+
+    const updatedUser = await user.save();
+
+    return res.status(200).json({
+        success: true,
+        message: "User updated successfully",
+        // data: updatedUser,
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+//USER - PROFILE PICTURE UPDATE
+
 
 module.exports = {
   userSignup,
@@ -720,6 +781,8 @@ module.exports = {
   getAllHomestays,
   getAllCategories,
   getHomestayById,
+  getUserById,
+  updateUserData,
   getAvailableHomestayAddresses,
   bookHomestay
 }

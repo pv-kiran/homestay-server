@@ -263,7 +263,20 @@ const validateHomestayId = Joi.object({
 
 const validateUserId = Joi.object({
     userId: Joi.string().custom(objectIdValidation).required(),
-  });
+});
+
+const validateUserUpdate = Joi.object({
+  address: Joi.object({
+    street: Joi.string().required(),
+    city: Joi.string().required(),
+    district: Joi.string().required(),
+    state: Joi.string().required(),
+    zip: Joi.string().required(),
+    country: Joi.string().required(),
+  }),
+  phone: Joi.string().pattern(/^\d{10}$/).required(),
+  gender: Joi.string().valid("Male", "Female", "Other").required(),
+});
 
 module.exports = {
   validateAdminSignup,
@@ -276,5 +289,6 @@ module.exports = {
   validateHomestayId,
   validateEmail,
   validateAmenity,
-  validateUserId
+  validateUserId,
+  validateUserUpdate,
 };
