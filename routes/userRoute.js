@@ -9,11 +9,13 @@ const {
   getAllHomestays,
   getAllCategories,
   getHomestayById,
-  getAvailableHomestayDistricts,
-  getUserById,
+  getAvailableHomestayAddresses,
+  bookHomestay,
+   getUserById,
   updateUserData,
 } = require("../controllers/userController");
-const { authenticateToken } = require("../middleware/authMiddleware");
+
+const { authenticateToken, isUser } = require("../middleware/authMiddleware");
 const router = express.Router();
 
 router.post("/auth/signin", userSignup);
@@ -28,7 +30,10 @@ router.get("/auth/view-profile", authenticateToken, getUserById )
 router.post("/get-allhomestays", getAllHomestays);
 router.get("/homestay/:homestayId", getHomestayById);
 router.get("/get-allcategories", getAllCategories);
-router.get("/get-all-locations", getAvailableHomestayDistricts);
+router.get("/get-all-locations", getAvailableHomestayAddresses);
+
+
+router.post("/book/homestay", authenticateToken, isUser, bookHomestay);
 
 
 module.exports = router;

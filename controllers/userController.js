@@ -13,7 +13,7 @@ const {
   validateHomestayId,
   validateUserUpdate,
 } = require("../utils/validationHelper");
-
+const Booking = require("../models/booking");
 
 const userSignup = async (req, res) => {
   const { error } = validateUserSignup.validate(req.body);
@@ -327,44 +327,113 @@ const userLogout = async (req, res) => {
   }
 };
 
-//USER - GET ALL HOMESTAYS
+
 // const getAllHomestays = async (req, res) => {
 //   try {
-//       const homestays = await Homestay.find()
-//           .select('-createdAt')
-//           .populate({
-//               path: 'category',
-//               match: { isDisabled: false }
-//           })
-//           .populate("amenities");
+//     const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms, city, currency } = req.body;
 
-//       // Filter out homestays with no category or disabled category
-//       const filteredHomestays = homestays.filter(homestay => homestay.category !== null);
 
-//       if (!filteredHomestays.length) {
-//           return res.status(404).json({
-//               success: false,
-//               message: 'No homestays found'
-//           });
+//     // Build the filter object dynamically
+//     const filter = {};
+
+//     // Category filter
+//     if (category && category.length > 0) {
+//       filter.category = { $in: category };
+//     }
+
+//     // Price range filter
+//     if (price && price.length === 2) {
+//       filter.pricePerNight = {
+//         $gte: price[0],
+//         $lte: price[1],
+//       };
+//     }
+
+//     // Number of guests filter (get homestays that can accommodate >= specified guests)
+//     if (numberOfGuest) {
+//       filter.maxGuests = { $gte: numberOfGuest };
+//     }
+
+//     // Number of rooms filter (get homestays with >= specified rooms)
+//     if (numberOfRooms) {
+//       filter.noOfRooms = { $gte: numberOfRooms };
+//     }
+
+//     // Number of bathrooms filter (get homestays with >= specified bathrooms)
+//     if (numberOfBathrooms) {
+//       filter.noOfBathRooms = { $gte: numberOfBathrooms };
+//     }
+
+//     // City filter (filter homestays by city in the address)
+//     if (city) {
+//       filter['address.city'] = { $in: city };
+//     }
+
+//     // Ensure non-disabled homestays
+//     filter.isDisabled = false;
+
+//     let homestays = await Homestay.find(filter)
+//       .select('-createdAt')
+//       .populate({
+//         path: 'category',
+//         match: { isDisabled: false },
+//       })
+//       .populate('amenities')
+//       .sort({ createdAt: -1 });
+
+//     // Handle currency conversion if a different currency is specified
+//     if (currency && currency.code !== 'INR') {
+//       try {
+//         const { data } = await axios.get(
+//           `https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`
+//         );
+
+//         homestays = homestays.map(homestay => {
+//           const convertedHomestay = homestay.toObject();
+//           convertedHomestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
+//           return convertedHomestay;
+//         });
+//       } catch (conversionError) {
+//         console.error('Currency conversion error:', conversionError);
+//         // Optional: Return original prices if conversion fails
 //       }
+//     }
 
-//       return res.status(200).json({
-//           success: true,
-//           data: filteredHomestays
+//     if (!homestays.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'No homestays found',
 //       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       data: homestays,
+//     });
 //   } catch (error) {
-//       console.error('Error retrieving homestays:', error);
-//       return res.status(500).json({
-//           success: false,
-//           message: 'An error occurred while retrieving homestays'
-//       });
+//     console.error('Error retrieving homestays:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'An error occurred while retrieving homestays',
+//     });
 //   }
 // };
+
+
 const getAllHomestays = async (req, res) => {
   try {
-    const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms, currency } = req.body;
+    const {
+      category,
+      price,
+      numberOfGuest,
+      numberOfRooms,
+      numberOfBathrooms,
+      city,
+      currency,
+      checkIn,
+      checkOut,
+    } = req.body;
 
-    console.log(currency);
 
     // Build the filter object dynamically
     const filter = {};
@@ -378,37 +447,73 @@ const getAllHomestays = async (req, res) => {
     if (price && price.length === 2) {
       filter.pricePerNight = {
         $gte: price[0],
-        $lte: price[1]
+        $lte: price[1],
       };
     }
 
-    // Number of guests filter (get homestays that can accommodate >= specified guests)
+    // Number of guests filter
     if (numberOfGuest) {
       filter.maxGuests = { $gte: numberOfGuest };
     }
 
-    // Number of rooms filter (get homestays with >= specified rooms)
+    // Number of rooms filter
     if (numberOfRooms) {
       filter.noOfRooms = { $gte: numberOfRooms };
     }
 
-    // Number of bathrooms filter (get homestays with >= specified bathrooms)
+    // Number of bathrooms filter
     if (numberOfBathrooms) {
       filter.noOfBathRooms = { $gte: numberOfBathrooms };
+    }
+
+    // City filter
+    if (city) {
+      filter['address.city'] = { $in: city };
     }
 
     // Ensure non-disabled homestays
     filter.isDisabled = false;
 
+    // Check for date range (checkIn & checkOut)
+    if (checkIn && checkOut) {
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+
+
+      // Validate date range
+      if (checkInDate >= checkOutDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Check-out date must be after check-in date',
+        });
+      }
+
+      // Find bookings with overlapping dates
+      const bookings = await Booking.find({
+        $or: [
+          { checkIn: { $lt: checkOutDate }, checkOut: { $gt: checkInDate } },
+        ],
+      }).select('homestayId');
+
+      // Extract unavailable homestay IDs
+      const unavailableHomestayIds = bookings.map(booking => booking.homestayId.toString());
+
+      // Add filter to exclude unavailable homestays
+      if (unavailableHomestayIds.length > 0) {
+        filter._id = { $nin: unavailableHomestayIds };
+      }
+    }
+
     let homestays = await Homestay.find(filter)
       .select('-createdAt')
       .populate({
         path: 'category',
-        match: { isDisabled: false }
+        match: { isDisabled: false },
       })
-      .populate("amenities")
+      .populate('amenities')
       .sort({ createdAt: -1 });
 
+    // Handle currency conversion if a different currency is specified
 
     if (currency && currency.code !== 'INR') {
       try {
@@ -421,29 +526,31 @@ const getAllHomestays = async (req, res) => {
         });
       } catch (conversionError) {
         console.error('Currency conversion error:', conversionError);
-        // Optional: Return original prices if conversion fails
       }
     }
 
     if (!homestays.length) {
       return res.status(404).json({
         success: false,
-        message: 'No homestays found'
+        message: 'No homestays found',
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: homestays
+      data: homestays,
     });
   } catch (error) {
     console.error('Error retrieving homestays:', error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while retrieving homestays'
+      message: 'An error occurred while retrieving homestays',
     });
   }
 };
+
+
+
 
 
 //USER - GET ALL CATEGORIES
@@ -508,33 +615,100 @@ const getHomestayById = async (req, res) => {
   };
 }
 
-
-//USER - GET ALL AVAILABLE DISTRICTS
-const getAvailableHomestayDistricts = async (req, res) => {
+const getAvailableHomestayAddresses = async (req, res) => {
   try {
-    const homestays = await Homestay.find({ isDisabled: false }).select('address.district');
+    // Fetch homestays that are not disabled and select only the address fields
+    const homestays = await Homestay.find({ isDisabled: false }).select('address');
 
     if (!homestays.length) {
       return res.status(404).json({
         success: false,
-        message: 'No available homestays found'
+        message: 'No available homestays found',
       });
     }
 
-    const districts = homestays.map(homestay => homestay.address.district);
+    // Map over the fetched homestays and extract the required address details
+    const addresses = homestays.map(homestay => ({
+      street: homestay.address.street,
+      city: homestay.address.city,
+      district: homestay.address.district,
+      state: homestay.address.state,
+    }));
 
     return res.status(200).json({
       success: true,
-      data: districts
+      data: addresses,
     });
   } catch (error) {
-    console.error('Error retrieving districts of homestays:', error);
+    console.error('Error retrieving addresses of homestays:', error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while retrieving districts of homestays'
+      message: 'An error occurred while retrieving addresses of homestays',
     });
   }
-}
+};
+
+const bookHomestay = async (req, res) => {
+  try {
+    const { homestayId, checkIn, checkOut } = req.body;
+
+    // 1. Validate the input
+    if (!req.userId || !homestayId || !checkIn || !checkOut) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields (userId, homestayId, checkIn, checkOut) are required.',
+      });
+    }
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    if (checkInDate >= checkOutDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Check-out date must be after the check-in date.',
+      });
+    }
+
+    // 2. Check for overlapping bookings
+    const overlappingBookings = await Booking.find({
+      homestayId,
+      $or: [
+        { checkIn: { $lt: checkOutDate }, checkOut: { $gt: checkInDate } },
+      ],
+    });
+
+    if (overlappingBookings.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'The selected room is not available for the specified dates.',
+      });
+    }
+
+    // 3. Create the booking
+    const newBooking = new Booking({
+      userId: req.userId,
+      homestayId,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+    });
+
+    await newBooking.save();
+
+    // 4. Send the response
+    return res.status(201).json({
+      success: true,
+      message: 'Room booked successfully.',
+      data: newBooking,
+    });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while processing the booking.',
+    });
+  }
+};
 
 //USER - GET PROFILE DATA
 const getUserById = async (req, res) => {
@@ -607,7 +781,8 @@ module.exports = {
   getAllHomestays,
   getAllCategories,
   getHomestayById,
-  getAvailableHomestayDistricts,
   getUserById,
-  updateUserData
+  updateUserData,
+  getAvailableHomestayAddresses,
+  bookHomestay
 }
