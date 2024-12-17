@@ -14,6 +14,8 @@ const {
   validateUserUpdate,
 } = require("../utils/validationHelper");
 const Booking = require("../models/booking");
+const { cloudinary } = require("../utils/cloudinaryHelper");
+const { upload } = require("../utils/multerHelper");
 
 const userSignup = async (req, res) => {
   const { error } = validateUserSignup.validate(req.body);
@@ -748,7 +750,7 @@ const updateUserData = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     if (address) user.address = address;
@@ -769,7 +771,48 @@ const updateUserData = async (req, res) => {
 }
 
 //USER - PROFILE PICTURE UPDATE
+const updateProPic = async (req, res) => {
+  
+  upload.single("profilePic")(req, res, async (uploadError) => {
+    if (uploadError) {
+      return res.status(500).json({ message: "profilePic upload error" });
+    }
+    try {
+      const userId = req.userId;
 
+      const existingUser = await User.findById(userId);
+      if (!existingUser) {
+        return res
+          .status(404)
+          .json({ message: "User not found" });
+      }
+
+      let profilePicUrl = req.body.profilePic; 
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path);
+          profilePicUrl = result.secure_url;
+        } catch (cloudinaryError) {
+          return res
+            .status(500)
+            .json({ message: "Error in uploading profile picture to Cloudinary" });
+        }
+      }
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { profilePic: profilePicUrl },
+        { new: true }
+      );
+      res.status(200).json({
+        success: true,
+        message: "Profile picture updated successfully",
+        profilePic: updatedUser.profilePic,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+}
 
 module.exports = {
   userSignup,
@@ -784,5 +827,6 @@ module.exports = {
   getUserById,
   updateUserData,
   getAvailableHomestayAddresses,
-  bookHomestay
+  bookHomestay,
+  updateProPic
 }
