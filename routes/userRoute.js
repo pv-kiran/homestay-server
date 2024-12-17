@@ -29,7 +29,7 @@ router.post("/auth/update-profile", authenticateToken, updateUserData);
 router.get("/auth/view-profile", authenticateToken, getUserById)
 
 router.post("/get-allhomestays", getAllHomestays);
-router.get("/homestay/:homestayId", getHomestayById);
+router.get("/homestay/:homestayId/:currency", getHomestayById);
 router.get("/get-allcategories", getAllCategories);
 router.get("/get-all-locations", getAvailableHomestayAddresses);
 

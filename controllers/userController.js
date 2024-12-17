@@ -488,15 +488,16 @@ const getAllCategories = async (req, res) => {
 };
 
 const getHomestayById = async (req, res) => {
-  const { error } = validateHomestayId.validate(req.params);
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.details[0].message,
-    });
-  }
+  // const { error } = validateHomestayId.validate(req.params);
+  // if (error) {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: error.details[0].message,
+  //   });
+  // }
 
-  const { homestayId } = req.params;
+  const { homestayId, currency } = req.params;
+
 
   try {
     const homestay = await Homestay.findById(homestayId)
@@ -510,7 +511,19 @@ const getHomestayById = async (req, res) => {
         message: "Homestay not found",
       });
     }
+    if (currency && currency.code !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
 
+
+        homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
+
+
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+    console.log(homestay)
     return res.status(200).json({
       success: true,
       data: homestay,
@@ -559,8 +572,9 @@ const getAvailableHomestayAddresses = async (req, res) => {
 
 const bookHomestay = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut } = req.body;
+    const { homestayId, checkIn, checkOut, currency } = req.body;
 
+    console.log(currency);
     // 1. Validate the input
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -606,11 +620,20 @@ const bookHomestay = async (req, res) => {
 
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    const amount = dailyRate * numDays;
+    let amount = dailyRate * numDays;
+
+    if (currency && currency.code !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`);
+        amount = (amount * data?.conversion_rate).toFixed(2)
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
 
     const options = {
       amount: amount * 100, // Amount in paise
-      currency: "INR",
+      currency: currency.code,
       receipt: `receipt_${Date.now()}`,
     };
 
@@ -622,18 +645,6 @@ const bookHomestay = async (req, res) => {
       });
     }
 
-    // 3. Create the booking
-    // const newBooking = new Booking({
-    //   userId: req.userId,
-    //   homestayId,
-    //   checkIn: checkInDate,
-    //   checkOut: checkOutDate,
-    //   amount,
-    //   paymentStatus: "PENDING",
-    //   razorpayOrderId: razorpayOrder.id,
-    // });
-
-    // await newBooking.save();
 
     return res.status(201).json({
       success: true,
