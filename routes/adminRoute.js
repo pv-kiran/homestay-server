@@ -24,6 +24,10 @@ const {
   getAllUsers,
   getUserById,
   toggleUserStatus,
+  updateCoupon,
+  createCoupon,
+  toggleCouponStatus,
+  getAllCoupons,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -69,6 +73,12 @@ router.post("/get-allhomestays", getAllHomestays);
 router.post("/get-allusers", getAllUsers);
 router.get("/get-user/:userId", getUserById);
 router.put("/toggle-user/:userId", toggleUserStatus);
+
+router.post("/add-coupon",createCoupon);
+router.put("/update-coupon/:id",updateCoupon);
+router.put("/toggle-coupon/:id", toggleCouponStatus);
+router.post("/get-allcoupons", getAllCoupons);
+
 
 
 module.exports = router;

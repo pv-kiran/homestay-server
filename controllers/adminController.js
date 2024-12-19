@@ -3,6 +3,7 @@ const Category = require("../models/category");
 const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
 const User = require("../models/user");
+const Coupon = require("../models/coupon");
 const { transporter } = require("../utils/emailHelper");
 const {
   validateAdminLogin,
@@ -13,7 +14,9 @@ const {
   validateHomestayId,
   validateEmail,
   validateAmenity,
-  validateUserId
+  validateUserId,
+  validateUpdateCoupon,
+  validateCreateCoupon,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -1064,6 +1067,141 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
+//ADMIN - ADD COUPON
+const createCoupon = async (req, res) => {
+  try {
+    const { error } = validateCreateCoupon.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { code, discountType, discountValue, maxDiscount, expiryDate, usageLimit, description } = req.body;
+
+    // Check for duplicate coupon code
+    const existingCoupon = await Coupon.findOne({ code });
+    if (existingCoupon) {
+      return res.status(400).json({ message: 'Coupon with this code already exists' });
+    }
+
+    const coupon = new Coupon({
+      code,
+      discountType,
+      discountValue,
+      maxDiscount,
+      expiryDate,
+      usageLimit,
+      description,
+      // createdBy: 'admin',
+    });
+
+    await coupon.save();
+    res.status(201).json({ message: 'Coupon created successfully', coupon });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating coupon', error });
+  }
+}
+
+//ADMIN - UPDATE COUPON
+const updateCoupon = async (req, res) => {
+  try {
+    const { error } = validateUpdateCoupon.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { id } = req.params; // Get coupon ID from request params
+    // Ensure the coupon to update exists
+    const coupon = await Coupon.findById(id);
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+    // Check for duplicate coupon code (excluding the current coupon being updated)
+    if (req.body.code) {
+      const duplicateCoupon = await Coupon.findOne({ code: req.body.code, _id: { $ne: id } });
+      if (duplicateCoupon) {
+        return res.status(400).json({ message: 'A coupon with this code already exists' });
+      }
+    }
+    // Update the coupon details with the fields from the request body
+    const updatedCoupon = await Coupon.findByIdAndUpdate(id, req.body, { new: true });
+
+    res.status(200).json({ message: 'Coupon updated successfully', updatedCoupon });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating coupon', error });
+  }
+}
+
+
+//ADMIN - TOGGLE COUPON STATUS
+const toggleCouponStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingCoupon = await Coupon.findById(id);
+    if (!existingCoupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+    // Toggle the isDisabled status
+    existingCoupon.isActive = !existingCoupon.isActive;
+
+    // Save the updated coupon
+    await existingCoupon.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Coupon has been ${existingCoupon.isActive ? "activated" : "disabled"
+        } successfully`,
+      coupon: existingCoupon,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Error toggling coupon status" });
+  }
+}
+
+
+//ADMIN - GET ALL COUPONS
+const getAllCoupons = async (req, res) => {
+  try {
+
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+    console.log(searchParams);
+    const searchQuery = searchParams
+      ? { code: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalCoupons = await Coupon.countDocuments(searchQuery);
+
+    const coupons = await Coupon.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
+
+    if (!coupons.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No coupons found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: coupons,
+      totalCoupons,
+      totalPages: Math.ceil(totalCoupons / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData,
+    });
+  } catch (error) {
+    console.error("Error retrieving coupons:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving coupons",
+    });
+  }
+};
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -1085,5 +1223,9 @@ module.exports = {
   getAllAmenities,
   getAllUsers,
   getUserById,
-  toggleUserStatus
+  toggleUserStatus,
+  createCoupon,
+  updateCoupon,
+  toggleCouponStatus,
+  getAllCoupons,
 };
