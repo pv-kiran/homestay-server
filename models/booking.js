@@ -21,15 +21,27 @@ const bookingSchema = new mongoose.Schema({
     },
     amount: {
         type: Number,
-        required: true
+        required: true,
     },
     paymentId: {
         type: String,
-        required: true
+        required: true,
     },
     orderId: {
         type: String,
-        required: true
+        required: true,
+    },
+    isCheckedIn: {
+        type: Boolean,
+        default: false, // Default value is false
+    },
+    isCheckedOut: {
+        type: Boolean,
+        default: false, // Default value is false
+    },
+    isCancelled: {
+        type: Boolean,
+        default: false, // Default value is false
     },
     createdAt: {
         type: Date,
