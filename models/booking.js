@@ -33,15 +33,15 @@ const bookingSchema = new mongoose.Schema({
     },
     isCheckedIn: {
         type: Boolean,
-        default: false, // Default value is false
+        default: false,
     },
     isCheckedOut: {
         type: Boolean,
-        default: false, // Default value is false
+        default: false,
     },
     isCancelled: {
         type: Boolean,
-        default: false, // Default value is false
+        default: false,
     },
     createdAt: {
         type: Date,
