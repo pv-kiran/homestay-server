@@ -511,7 +511,7 @@ const getHomestayById = async (req, res) => {
         message: "Homestay not found",
       });
     }
-    if (currency && currency.code !== 'INR') {
+    if (currency && currency !== 'INR') {
       try {
         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
 
@@ -523,7 +523,6 @@ const getHomestayById = async (req, res) => {
         console.error('Currency conversion error:', conversionError);
       }
     }
-    console.log(homestay)
     return res.status(200).json({
       success: true,
       data: homestay,
@@ -784,6 +783,104 @@ const updateUserData = async (req, res) => {
   }
 }
 
+const getUserBookings = async (req, res) => {
+
+  try {
+    // Fetch bookings for the given user and populate homestay details
+    const bookings = await Booking.find({ userId: req.userId })
+      .populate({
+        path: 'homestayId', // Populate homestay details
+        select: 'title images address', // Fetch specific fields
+      })
+      .sort({ createdAt: -1 }); // Optional: Sort by latest bookings
+
+    if (!bookings.length) {
+      return res.status(404).json({ message: 'No bookings found for this user' });
+    }
+
+    // Transform bookings into desired format
+    const bookingDetails = bookings.map(booking => ({
+      _id: booking?._id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      paymentId: booking.paymentId,
+      amount: booking.amount,
+      createdAt: booking.createdAt,
+      homestayName: booking.homestayId?.title || 'Unknown Homestay',
+      homestayImage: booking.homestayId?.images?.[0] || null,
+      homestayAddress: booking.homestayId?.address || null,
+      isCheckedIn: booking?.isCheckedIn,
+      isCheckedOut: booking?.isCheckedOut,
+      isCancelled: booking?.isCancelled
+    }));
+
+    res.status(200).json(bookingDetails);
+  } catch (error) {
+    console.error('Error fetching user bookings:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const markAsCheckedIn = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCheckedIn: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Checked in successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
+const markAsCheckedOut = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCheckedOut: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Checked out successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
+const markAsCancelled = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCancelled: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Booking cancelled successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
 
 
 module.exports = {
@@ -800,5 +897,9 @@ module.exports = {
   updateUserData,
   getAvailableHomestayAddresses,
   bookHomestay,
-  bookHomestayComplete
+  bookHomestayComplete,
+  getUserBookings,
+  markAsCheckedIn,
+  markAsCheckedOut,
+  markAsCancelled
 }

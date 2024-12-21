@@ -3,6 +3,7 @@ const Category = require("../models/category");
 const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
 const User = require("../models/user");
+const Booking = require("../models/booking");
 const { transporter } = require("../utils/emailHelper");
 const {
   validateAdminLogin,
@@ -27,6 +28,7 @@ const {
 } = require("../templates/otpEmailTemplate");
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
+
 
 //ADMIN SIGNUP
 const adminSignUp = async (req, res) => {
@@ -1064,6 +1066,89 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
+
+
+
+const getAllBookings = async (req, res) => {
+  try {
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+
+    // Build the search query
+    const searchQuery = searchParams
+      ? {
+        $or: [
+          { paymentId: { $regex: searchParams, $options: "i" } },
+          { orderId: { $regex: searchParams, $options: "i" } },
+        ],
+      }
+      : {};
+
+    // Calculate skip and limit for pagination
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // Total number of bookings matching the search
+    const totalBookings = await Booking.countDocuments(searchQuery);
+
+    // Fetch paginated bookings with populated homestay details
+    const bookings = await Booking.find(searchQuery)
+      .populate({
+        path: "userId",
+        select: "fullName email",
+      })
+      .populate({
+        path: "homestayId",
+        select: "title images address",
+      })
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 }); // Sort by creation date, latest first
+
+    // Check if no bookings were found
+    if (!bookings.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No bookings found",
+      });
+    }
+
+    // Transform bookings into desired format
+    const bookingDetails = bookings.map((booking) => ({
+      _id: booking._id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      paymentId: booking.paymentId,
+      amount: booking.amount,
+      createdAt: booking.createdAt,
+      homestayName: booking.homestayId?.title || "Unknown Homestay",
+      homestayImage: booking.homestayId?.images?.[0] || null,
+      homestayAddress: booking.homestayId?.address || null,
+      isCheckedIn: booking.isCheckedIn,
+      isCheckedOut: booking.isCheckedOut,
+      isCancelled: booking.isCancelled,
+      userName: booking?.userId?.fullName
+    }));
+
+    // Respond with transformed bookings and pagination details
+    return res.status(200).json({
+      success: true,
+      data: bookingDetails,
+      totalBookings,
+      totalPages: Math.ceil(totalBookings / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData,
+    });
+  } catch (error) {
+    console.error("Error retrieving bookings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving bookings",
+    });
+  }
+};
+
+
+
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -1085,5 +1170,6 @@ module.exports = {
   getAllAmenities,
   getAllUsers,
   getUserById,
-  toggleUserStatus
+  toggleUserStatus,
+  getAllBookings
 };
