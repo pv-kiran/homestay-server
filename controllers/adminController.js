@@ -1190,6 +1190,9 @@ const getAllCoupons = async (req, res) => {
     const formattedCoupons = coupons?.map(coupon => ({ 
       ...coupon?._doc, 
       expiryDate: format(new Date(coupon?.expiryDate), 'dd-MM-yyyy'),
+      discountValue: coupon.discountType === 'percentage'
+      ? `${coupon.discountValue}%` 
+      : `${coupon.discountValue}/-`,
     }));
 
     return res.status(200).json({
