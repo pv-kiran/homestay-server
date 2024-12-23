@@ -5,6 +5,7 @@ const Homestay = require("../models/homestays");
 const User = require("../models/user");
 const Coupon = require("../models/coupon");
 const { transporter } = require("../utils/emailHelper");
+const { format } = require('date-fns');
 const {
   validateAdminLogin,
   validateAdminSignup,
@@ -1127,6 +1128,7 @@ const updateCoupon = async (req, res) => {
 
     res.status(200).json({ message: 'Coupon updated successfully', updatedCoupon });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ message: 'Error updating coupon', error });
   }
 }
@@ -1185,9 +1187,14 @@ const getAllCoupons = async (req, res) => {
       });
     }
 
+    const formattedCoupons = coupons?.map(coupon => ({ 
+      ...coupon?._doc, 
+      expiryDate: format(new Date(coupon?.expiryDate), 'dd-MM-yyyy'),
+    }));
+
     return res.status(200).json({
       success: true,
-      data: coupons,
+      data: formattedCoupons,
       totalCoupons,
       totalPages: Math.ceil(totalCoupons / pagePerData),
       currentPage: pageNumber,
