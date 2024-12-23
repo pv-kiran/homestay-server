@@ -1147,6 +1147,40 @@ const getAllBookings = async (req, res) => {
 };
 
 
+const reorderImages = async (req, res) => {
+  const { id } = req.params; // Homestay ID from the URL
+  // Validate request body
+  if (!Array.isArray(req.body) || !req.body.every((img) => typeof img === 'string')) {
+    return res.status(400).json({ error: 'Images must be an array of strings.' });
+  }
+
+  try {
+    // Find and update the Homestay
+    const updatedHomestay = await Homestay.findByIdAndUpdate(
+      id,
+      { $set: { images: req.body } },
+      { new: true, runValidators: true } // Returns the updated document and validates the data
+    );
+
+    // If no Homestay is found
+    if (!updatedHomestay) {
+      return res.status(404).json({ error: 'Homestay not found.' });
+    }
+
+    // Success response
+    res.status(200).json({
+      success: true,
+      message: 'Images updated successfully.',
+      homestay: updatedHomestay,
+    });
+  } catch (error) {
+    // Handle errors
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while updating images.' });
+  }
+};
+
+
 
 
 module.exports = {
@@ -1171,5 +1205,6 @@ module.exports = {
   getAllUsers,
   getUserById,
   toggleUserStatus,
-  getAllBookings
+  getAllBookings,
+  reorderImages
 };
