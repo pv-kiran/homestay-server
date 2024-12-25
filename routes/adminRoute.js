@@ -25,6 +25,7 @@ const {
   getUserById,
   toggleUserStatus,
   getAllBookings,
+  reorderImages,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -71,7 +72,7 @@ router.post("/get-allusers", getAllUsers);
 router.get("/get-user/:userId", getUserById);
 router.put("/toggle-user/:userId", toggleUserStatus);
 router.post("/get-allbookings", getAllBookings);
-
+router.put("/homestay/:id/images", reorderImages);
 
 
 module.exports = router;
