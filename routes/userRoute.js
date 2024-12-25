@@ -18,6 +18,7 @@ const {
   markAsCheckedIn,
   markAsCheckedOut,
   markAsCancelled,
+  checkFutureBooking
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -45,6 +46,8 @@ router.get("/homestay/my-bookings", authenticateToken, isUser, getUserBookings);
 router.patch('/homestay/checkin/:bookingId', authenticateToken, isUser, markAsCheckedIn);
 router.patch('/homestay/checkout/:bookingId', authenticateToken, isUser, markAsCheckedOut);
 router.patch('/homestay/cancel/:bookingId', authenticateToken, isUser, markAsCancelled);
+
+router.get('/homestay/booking/:homeStayId/status', authenticateToken, isUser, checkFutureBooking);
 
 
 module.exports = router;

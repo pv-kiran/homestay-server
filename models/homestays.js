@@ -11,7 +11,7 @@ const hotelPoliciesSchema = new mongoose.Schema({
         required: true,
     },
     guestPolicies: {
-        type: [String], 
+        type: [String],
         // required: true,
     },
 });
@@ -55,6 +55,14 @@ const homestaySchema = new mongoose.Schema({
                 type: Number,
                 required: true,
             },
+            nearByLatitude: {
+                type: Number,
+                required: true,
+            },
+            nearByLongitude: {
+                type: Number,
+                required: true,
+            },
         },
     },
     amenities: [{
@@ -83,7 +91,7 @@ const homestaySchema = new mongoose.Schema({
     category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',
-        required: true, 
+        required: true,
     },
     createdAt: {
         type: Date,
