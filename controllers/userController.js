@@ -882,6 +882,35 @@ const markAsCancelled = async (req, res) => {
 };
 
 
+const checkFutureBooking = async (req, res) => {
+  const { homeStayId } = req.params
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  try {
+    const booking = await Booking.findOne({
+      userId: req.userId,
+      homestayId: homeStayId,
+      checkOut: { $gte: today },
+    });
+
+
+    if (booking) {
+      return res.status(200).json({
+        status: true,
+        checkIn: booking.checkIn,
+      });
+    }
+    res.status(200).json({
+      status: false,
+      checkIn: booking.null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+}
+
+
+
 
 module.exports = {
   userSignup,
@@ -901,5 +930,6 @@ module.exports = {
   getUserBookings,
   markAsCheckedIn,
   markAsCheckedOut,
-  markAsCancelled
+  markAsCancelled,
+  checkFutureBooking
 }

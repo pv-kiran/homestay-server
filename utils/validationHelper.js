@@ -123,6 +123,14 @@ const validateHomestay = Joi.object({
         "number.base": "Longitude must be a number.",
         "any.required": "Longitude is required.",
       }),
+      nearByLatitude: Joi.number().required().messages({
+        "number.base": "Latitude must be a number.",
+        "any.required": "Latitude is required.",
+      }),
+      nearByLongitude: Joi.number().required().messages({
+        "number.base": "Longitude must be a number.",
+        "any.required": "Longitude is required.",
+      }),
     })
       .required()
       .messages({
