@@ -5,6 +5,9 @@ const amenitySchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    description: {
+        type: String
+    },
     iconUrl: {
         type: String,
     },
@@ -13,9 +16,9 @@ const amenitySchema = new mongoose.Schema({
         default: false
     }
 },
-{
-    timestamps: true,  
-});
+    {
+        timestamps: true,
+    });
 
 
 module.exports = mongoose.model('Amenity', amenitySchema);
