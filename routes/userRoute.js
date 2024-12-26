@@ -14,6 +14,8 @@ const {
   getUserById,
   updateUserData,
   updateProPic,
+  getValidCoupons,
+  applyCoupon,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -37,6 +39,9 @@ router.get("/get-all-locations", getAvailableHomestayAddresses);
 
 
 router.post("/book/homestay", authenticateToken, isUser, bookHomestay);
+
+router.get("/get-coupons", authenticateToken, isUser, getValidCoupons);
+router.post("/apply-coupon", authenticateToken, isUser, applyCoupon);
 
 
 module.exports = router;

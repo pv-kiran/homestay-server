@@ -2,6 +2,7 @@ const { default: axios } = require("axios");
 const User = require("../models/user");
 const Homestay = require("../models/homestays");
 const Category = require("../models/category");
+const Coupon = require("../models/coupon");
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
 const { getToken } = require("../utils/jwtHelper");
@@ -12,6 +13,7 @@ const {
   userValidationSchema,
   validateHomestayId,
   validateUserUpdate,
+  validateApplyCoupon,
 } = require("../utils/validationHelper");
 const Booking = require("../models/booking");
 const { cloudinary } = require("../utils/cloudinaryHelper");
@@ -814,6 +816,122 @@ const updateProPic = async (req, res) => {
   });
 }
 
+
+//USER - GET ALL VALID COUPONS
+const getValidCoupons = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const today = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(today.getMonth() + 1);
+
+    const coupons = await Coupon.find({
+      expiryDate: { $gte: today, $lte: nextMonth },
+      isActive: true, // Ensure coupon is active
+    });
+
+    // Filter coupons based on usageLimit, usageCount, and userRestrictions
+    const filteredCoupons = coupons.filter((coupon) => {
+      // Check if the coupon has a usage limit and if the limit is reached
+      if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+        return false;
+      }
+      // Check user-specific usage restrictions
+      const userUsage = coupon.userRestrictions?.get(userId) || 0;
+      if (userUsage > 0) {
+        return false;
+      }
+      return true; // Include the coupon if all conditions are satisfied
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredCoupons,
+    });
+  } catch (error) {
+      console.error("Error fetching coupons:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch coupons",
+    });
+  }
+}
+
+
+//USER - APPLY COUPON
+const applyCoupon = async (req, res) => {
+  try {
+    const { error } = validateApplyCoupon.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success:false, message: error.details[0].message });
+    }
+
+    const userId = req.userId;
+    const { couponCode, homestayId, numberOfDays } = req.body;
+
+    const coupon = await Coupon.findOne({code : couponCode});
+    if (!coupon) {
+      return res.status(404).json({ success:false, message: 'Coupon not found.' });
+    }
+
+    // Check if the coupon is expired
+    if (coupon.expiryDate < new Date()) {
+      return res.status(400).json({ success:false, message: 'Coupon has expired' });
+    }
+
+    // Check if the coupon is active
+    if (!coupon.isActive) {
+      return res.status(400).json({ success:false, message: 'Coupon is no longer active' });
+    }
+
+    // Check if the user has already redeemed the coupon
+    const userUsageCount = coupon.userRestrictions.get(userId);
+    if (userUsageCount) {
+      return res.status(400).json({ success:false, message: 'You have already applied this coupon' });
+    }
+
+    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+      return res.status(400).json({ success:false, message: 'Coupon usage limit exceeded.' });
+    }
+
+    const homestay = await Homestay.findById(homestayId);
+    if (!homestay) {
+      return res.status(404).json({ success:false, message: 'Homestay not found.' });
+    }
+
+    const totalPrice = homestay.pricePerNight * numberOfDays;
+    let discountAmount = 0;
+
+    if (coupon.discountType === 'percentage') {
+      discountAmount = (totalPrice * coupon.discountValue) / 100;
+      if (coupon.maxDiscount !== null) {
+        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+      }
+    } else if (coupon.discountType === 'fixed') {
+      discountAmount = coupon.discountValue;
+    }
+
+    const newPrice = totalPrice - discountAmount;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon applied successfully.',
+      data :{
+        originalPrice: totalPrice,
+        discountAmount,
+        newPrice,
+        discountType: coupon?.discountType,
+        code: coupon?.code,
+        value: coupon?.discountValue,
+      }
+    });
+  } catch (error) {
+    console.error('Error applying coupon:', err);
+    res.status(500).json({ message: 'Something went wrong'});
+  }
+}
+
+
 module.exports = {
   userSignup,
   userOtpVerify,
@@ -828,5 +946,7 @@ module.exports = {
   updateUserData,
   getAvailableHomestayAddresses,
   bookHomestay,
-  updateProPic
+  updateProPic,
+  getValidCoupons,
+  applyCoupon,
 }

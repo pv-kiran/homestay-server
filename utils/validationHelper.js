@@ -321,6 +321,22 @@ const validateUpdateCoupon = Joi.object({
   usageCount: Joi.number().integer().min(0).optional(), 
 });
 
+const validateApplyCoupon = Joi.object({
+  couponCode: Joi.string().required().messages({
+    'any.required': 'Coupon code is required.',
+    'string.base': 'Coupon code must be a string.',
+  }),
+  homestayId: Joi.string().required().messages({
+    'any.required': 'Homestay ID is required.',
+    'string.base': 'Homestay ID must be a string.',
+  }),
+  numberOfDays: Joi.number().integer().min(1).required().messages({
+      'any.required': 'Number of days is required.',
+      'number.base': 'Number of days must be a number.',
+      'number.min': 'Number of days must be at least 1.',
+  }),
+})
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -336,4 +352,5 @@ module.exports = {
   validateUserUpdate,
   validateCreateCoupon,
   validateUpdateCoupon,
+  validateApplyCoupon
 };
