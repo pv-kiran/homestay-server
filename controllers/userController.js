@@ -931,6 +931,44 @@ const applyCoupon = async (req, res) => {
   }
 }
 
+//USER - GET  LATEST COUPON FOR LANDING PAGE AD
+const getLatestValidCoupon = async (req, res) => {
+  try {
+    // Fetch the current date
+    const currentDate = new Date();
+
+    // Find the latest added coupon that satisfies all conditions
+    const latestCoupon = await Coupon.findOne({
+        isActive: true, // Coupon must be active
+        expiryDate: { $gt: currentDate },
+        discountType: 'percentage', 
+        $or: [
+            { usageLimit: null }, // Unlimited usage
+            { $expr: { $gt: ["$usageLimit", "$usageCount"] } }, // Usage limit not reached
+        ],
+    }).sort({ createdAt: -1 }); // Get the most recently created coupon
+
+    // If no coupon found, return a message
+    if (!latestCoupon) {
+        return res.status(404).json({ message: 'No valid coupon found.' });
+    }
+
+    // Return the coupon details
+    return res.status(200).json({
+        success: true,
+        coupon: latestCoupon,
+    });
+} catch (error) {
+    // Handle any potential errors
+    console.error('Error fetching the latest valid coupon:', error);
+    return res.status(500).json({
+        success: false,
+        message: 'An error occurred while fetching the coupon.',
+        error: error.message,
+    });
+}
+}
+
 
 module.exports = {
   userSignup,
@@ -949,4 +987,5 @@ module.exports = {
   updateProPic,
   getValidCoupons,
   applyCoupon,
+  getLatestValidCoupon,
 }
