@@ -4,6 +4,7 @@ const Amenity = require("../models/amenity");
 const Homestay = require("../models/homestays");
 const User = require("../models/user");
 const Coupon = require("../models/coupon");
+const Booking = require("../models/booking");
 const { transporter } = require("../utils/emailHelper");
 const { format } = require('date-fns');
 const {
@@ -31,6 +32,7 @@ const {
 } = require("../templates/otpEmailTemplate");
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
+
 
 //ADMIN SIGNUP
 const adminSignUp = async (req, res) => {
@@ -808,6 +810,7 @@ const addAmenities = async (req, res) => {
 
       const newAmenity = new Amenity({
         amenityName: req.body.amenityName,
+        description: req.body.description,
         iconUrl: iconUrl,
       });
 
@@ -833,6 +836,7 @@ const updateAmenity = async (req, res) => {
       return res.status(500).json({ message: "Icon upload error" });
     }
 
+    console.log(req.body)
     try {
       const { error } = validateAmenity.validate(req.body);
       if (error) {
@@ -868,7 +872,11 @@ const updateAmenity = async (req, res) => {
       // Update the amenity
       const updatedAmenity = await Amenity.findByIdAndUpdate(
         amenityId,
-        { amenityName: req.body.amenityName, iconUrl: iconUrl },
+        {
+          amenityName: req.body.amenityName,
+          description: req.body.description,
+          iconUrl: iconUrl
+        },
         { new: true }
       );
 
@@ -931,7 +939,7 @@ const getAllAmenities = async (req, res) => {
     const amenities = await Amenity.find(searchQuery)
       .skip(skip)
       .limit(parseInt(pagePerData))
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1, _id: 1 });
 
     if (!amenities.length) {
       return res.status(404).json({
@@ -1068,6 +1076,7 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
+
 //ADMIN - ADD COUPON
 const createCoupon = async (req, res) => {
   try {
@@ -1201,16 +1210,140 @@ const getAllCoupons = async (req, res) => {
       totalCoupons,
       totalPages: Math.ceil(totalCoupons / pagePerData),
       currentPage: pageNumber,
+      pageSize: pagePerData
+    })
+  }catch (error) {
+    console.error("Error retrieving coupons:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving coupons"})
+    console.error("Error retrieving bookings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving bookings",
+    });
+  }
+}
+
+
+
+
+const getAllBookings = async (req, res) => {
+  try {
+    const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+
+    // Build the search query
+    const searchQuery = searchParams
+      ? {
+        $or: [
+          { paymentId: { $regex: searchParams, $options: "i" } },
+          { orderId: { $regex: searchParams, $options: "i" } },
+        ],
+      }
+      : {};
+
+    // Calculate skip and limit for pagination
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // Total number of bookings matching the search
+    const totalBookings = await Booking.countDocuments(searchQuery);
+
+    // Fetch paginated bookings with populated homestay details
+    const bookings = await Booking.find(searchQuery)
+      .populate({
+        path: "userId",
+        select: "fullName email",
+      })
+      .populate({
+        path: "homestayId",
+        select: "title images address",
+      })
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 }); // Sort by creation date, latest first
+
+    // Check if no bookings were found
+    if (!bookings.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No bookings found",
+      });
+    }
+
+    // Transform bookings into desired format
+    const bookingDetails = bookings.map((booking) => ({
+      _id: booking._id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      paymentId: booking.paymentId,
+      amount: booking.amount,
+      createdAt: booking.createdAt,
+      homestayName: booking.homestayId?.title || "Unknown Homestay",
+      homestayImage: booking.homestayId?.images?.[0] || null,
+      homestayAddress: booking.homestayId?.address || null,
+      isCheckedIn: booking.isCheckedIn,
+      isCheckedOut: booking.isCheckedOut,
+      isCancelled: booking.isCancelled,
+      userName: booking?.userId?.fullName
+    }));
+
+    // Respond with transformed bookings and pagination details
+    return res.status(200).json({
+      success: true,
+      data: bookingDetails,
+      totalBookings,
+      totalPages: Math.ceil(totalBookings / pagePerData),
+      currentPage: pageNumber,
       pageSize: pagePerData,
     });
   } catch (error) {
     console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons",
+      message: "An error occurred while retrieving coupons"})
+    console.error("Error retrieving bookings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving bookings",
     });
   }
 };
+
+
+const reorderImages = async (req, res) => {
+  const { id } = req.params; // Homestay ID from the URL
+  // Validate request body
+  if (!Array.isArray(req.body) || !req.body.every((img) => typeof img === 'string')) {
+    return res.status(400).json({ error: 'Images must be an array of strings.' });
+  }
+
+  try {
+    // Find and update the Homestay
+    const updatedHomestay = await Homestay.findByIdAndUpdate(
+      id,
+      { $set: { images: req.body } },
+      { new: true, runValidators: true } // Returns the updated document and validates the data
+    );
+
+    // If no Homestay is found
+    if (!updatedHomestay) {
+      return res.status(404).json({ error: 'Homestay not found.' });
+    }
+
+    // Success response
+    res.status(200).json({
+      success: true,
+      message: 'Images updated successfully.',
+      homestay: updatedHomestay,
+    });
+  } catch (error) {
+    // Handle errors
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while updating images.' });
+  }
+};
+
+
 
 module.exports = {
   adminSignUp,
@@ -1238,4 +1371,6 @@ module.exports = {
   updateCoupon,
   toggleCouponStatus,
   getAllCoupons,
+  getAllBookings,
+  reorderImages
 };

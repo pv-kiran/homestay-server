@@ -15,9 +15,13 @@ const {
   validateUserUpdate,
   validateApplyCoupon,
 } = require("../utils/validationHelper");
+
 const Booking = require("../models/booking");
+
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
+const { razorpay } = require("../utils/razorpay");
+
 
 const userSignup = async (req, res) => {
   const { error } = validateUserSignup.validate(req.body);
@@ -332,96 +336,6 @@ const userLogout = async (req, res) => {
 };
 
 
-// const getAllHomestays = async (req, res) => {
-//   try {
-//     const { category, price, numberOfGuest, numberOfRooms, numberOfBathrooms, city, currency } = req.body;
-
-
-//     // Build the filter object dynamically
-//     const filter = {};
-
-//     // Category filter
-//     if (category && category.length > 0) {
-//       filter.category = { $in: category };
-//     }
-
-//     // Price range filter
-//     if (price && price.length === 2) {
-//       filter.pricePerNight = {
-//         $gte: price[0],
-//         $lte: price[1],
-//       };
-//     }
-
-//     // Number of guests filter (get homestays that can accommodate >= specified guests)
-//     if (numberOfGuest) {
-//       filter.maxGuests = { $gte: numberOfGuest };
-//     }
-
-//     // Number of rooms filter (get homestays with >= specified rooms)
-//     if (numberOfRooms) {
-//       filter.noOfRooms = { $gte: numberOfRooms };
-//     }
-
-//     // Number of bathrooms filter (get homestays with >= specified bathrooms)
-//     if (numberOfBathrooms) {
-//       filter.noOfBathRooms = { $gte: numberOfBathrooms };
-//     }
-
-//     // City filter (filter homestays by city in the address)
-//     if (city) {
-//       filter['address.city'] = { $in: city };
-//     }
-
-//     // Ensure non-disabled homestays
-//     filter.isDisabled = false;
-
-//     let homestays = await Homestay.find(filter)
-//       .select('-createdAt')
-//       .populate({
-//         path: 'category',
-//         match: { isDisabled: false },
-//       })
-//       .populate('amenities')
-//       .sort({ createdAt: -1 });
-
-//     // Handle currency conversion if a different currency is specified
-//     if (currency && currency.code !== 'INR') {
-//       try {
-//         const { data } = await axios.get(
-//           `https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`
-//         );
-
-//         homestays = homestays.map(homestay => {
-//           const convertedHomestay = homestay.toObject();
-//           convertedHomestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
-//           return convertedHomestay;
-//         });
-//       } catch (conversionError) {
-//         console.error('Currency conversion error:', conversionError);
-//         // Optional: Return original prices if conversion fails
-//       }
-//     }
-
-//     if (!homestays.length) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'No homestays found',
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       data: homestays,
-//     });
-//   } catch (error) {
-//     console.error('Error retrieving homestays:', error);
-//     return res.status(500).json({
-//       success: false,
-//       message: 'An error occurred while retrieving homestays',
-//     });
-//   }
-// };
 
 
 const getAllHomestays = async (req, res) => {
@@ -554,9 +468,6 @@ const getAllHomestays = async (req, res) => {
 };
 
 
-
-
-
 //USER - GET ALL CATEGORIES
 const getAllCategories = async (req, res) => {
   try {
@@ -583,15 +494,16 @@ const getAllCategories = async (req, res) => {
 };
 
 const getHomestayById = async (req, res) => {
-  const { error } = validateHomestayId.validate(req.params);
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.details[0].message,
-    });
-  }
+  // const { error } = validateHomestayId.validate(req.params);
+  // if (error) {
+  //   return res.status(400).json({
+  //     success: false,
+  //     message: error.details[0].message,
+  //   });
+  // }
 
-  const { homestayId } = req.params;
+  const { homestayId, currency } = req.params;
+
 
   try {
     const homestay = await Homestay.findById(homestayId)
@@ -605,7 +517,18 @@ const getHomestayById = async (req, res) => {
         message: "Homestay not found",
       });
     }
+    if (currency && currency !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
 
+
+        homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
+
+
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
     return res.status(200).json({
       success: true,
       data: homestay,
@@ -654,8 +577,9 @@ const getAvailableHomestayAddresses = async (req, res) => {
 
 const bookHomestay = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut } = req.body;
+    const { homestayId, checkIn, checkOut, currency } = req.body;
 
+    console.log(currency);
     // 1. Validate the input
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -674,6 +598,8 @@ const bookHomestay = async (req, res) => {
       });
     }
 
+
+
     // 2. Check for overlapping bookings
     const overlappingBookings = await Booking.find({
       homestayId,
@@ -689,22 +615,113 @@ const bookHomestay = async (req, res) => {
       });
     }
 
+    const homestay = await Homestay.findById(homestayId);
+    if (!homestay) {
+      return res.status(404).json({
+        success: false,
+        message: "Homestay not found.",
+      });
+    }
+
+    const dailyRate = homestay.pricePerNight;
+    const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+    let amount = dailyRate * numDays;
+
+    if (currency && currency.code !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`);
+        amount = (amount * data?.conversion_rate).toFixed(2)
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+
+    const options = {
+      amount: amount * 100, // Amount in paise
+      currency: currency.code,
+      receipt: `receipt_${Date.now()}`,
+    };
+
+    const razorpayOrder = await razorpay.orders.create(options);
+    if (!razorpayOrder) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create Razorpay order.",
+      });
+    }
+
+
+    return res.status(201).json({
+      success: true,
+      message: 'Room booking initiated.',
+      data: razorpayOrder
+    });
+
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while processing the booking.',
+    });
+  }
+};
+
+const bookHomestayComplete = async (req, res) => {
+  try {
+    const { homestayId, checkIn, checkOut, orderId,
+      paymentId } = req.body;
+
+    if (!req.userId || !homestayId || !checkIn || !checkOut) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields (userId, homestayId, checkIn, checkOut) are required.',
+      });
+    }
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    if (checkInDate >= checkOutDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Check-out date must be after the check-in date.',
+      });
+    }
+
+
+
+    const homestay = await Homestay.findById(homestayId);
+    if (!homestay) {
+      return res.status(404).json({
+        success: false,
+        message: "Homestay not found.",
+      });
+    }
+
+    const dailyRate = homestay.pricePerNight;
+    const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+    const amount = dailyRate * numDays;
+
+
     // 3. Create the booking
     const newBooking = new Booking({
       userId: req.userId,
       homestayId,
       checkIn: checkInDate,
       checkOut: checkOutDate,
+      amount,
+      orderId,
+      paymentId
     });
 
     await newBooking.save();
 
-    // 4. Send the response
     return res.status(201).json({
       success: true,
-      message: 'Room booked successfully.',
-      data: newBooking,
+      message: 'Room booking initiated.',
+      data: newBooking
     });
+
   } catch (error) {
     console.error('Error creating booking:', error);
     return res.status(500).json({
@@ -718,8 +735,8 @@ const bookHomestay = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const userId = req.userId
-    const user = await User.findOne({_id:userId});
-    if(!user) {
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found"
@@ -740,14 +757,14 @@ const getUserById = async (req, res) => {
 
 
 //USER - PROFILE UPDATION
-const updateUserData = async (req, res) => {  
+const updateUserData = async (req, res) => {
   try {
     const { error } = validateUserUpdate.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
     }
 
-    const userId = req.userId; 
+    const userId = req.userId;
     const { address, phone, gender } = req.body;
 
     const user = await User.findById(userId);
@@ -762,9 +779,9 @@ const updateUserData = async (req, res) => {
     const updatedUser = await user.save();
 
     return res.status(200).json({
-        success: true,
-        message: "User updated successfully",
-        // data: updatedUser,
+      success: true,
+      message: "User updated successfully",
+      // data: updatedUser,
     });
 
   } catch (error) {
@@ -816,7 +833,6 @@ const updateProPic = async (req, res) => {
   });
 }
 
-
 //USER - GET ALL VALID COUPONS
 const getValidCoupons = async (req, res) => {
   try {
@@ -854,6 +870,131 @@ const getValidCoupons = async (req, res) => {
         success: false,
         message: "Failed to fetch coupons",
     });
+  }
+}
+const getUserBookings = async (req, res) => {
+
+  try {
+    // Fetch bookings for the given user and populate homestay details
+    const bookings = await Booking.find({ userId: req.userId })
+      .populate({
+        path: 'homestayId', // Populate homestay details
+        select: 'title images address', // Fetch specific fields
+      })
+      .sort({ createdAt: -1 }); // Optional: Sort by latest bookings
+
+    if (!bookings.length) {
+      return res.status(404).json({ message: 'No bookings found for this user' });
+    }
+
+    // Transform bookings into desired format
+    const bookingDetails = bookings.map(booking => ({
+      _id: booking?._id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      paymentId: booking.paymentId,
+      amount: booking.amount,
+      createdAt: booking.createdAt,
+      homestayName: booking.homestayId?.title || 'Unknown Homestay',
+      homestayImage: booking.homestayId?.images?.[0] || null,
+      homestayAddress: booking.homestayId?.address || null,
+      isCheckedIn: booking?.isCheckedIn,
+      isCheckedOut: booking?.isCheckedOut,
+      isCancelled: booking?.isCancelled
+    }));
+
+    res.status(200).json(bookingDetails);
+  } catch (error) {
+    console.error('Error fetching user bookings:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const markAsCheckedIn = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCheckedIn: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Checked in successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
+const markAsCheckedOut = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCheckedOut: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Checked out successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
+const markAsCancelled = async (req, res) => {
+  const { bookingId } = req.params;
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      bookingId,
+      { isCancelled: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json({ message: 'Booking cancelled successfully', booking });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+};
+
+
+const checkFutureBooking = async (req, res) => {
+  const { homeStayId } = req.params
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  try {
+    const booking = await Booking.findOne({
+      userId: req.userId,
+      homestayId: homeStayId,
+      checkOut: { $gte: today },
+    });
+
+
+    if (booking) {
+      return res.status(200).json({
+        status: true,
+        checkIn: booking.checkIn,
+      });
+    }
+    res.status(200).json({
+      status: false,
+      checkIn: booking.null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error });
   }
 }
 
@@ -988,4 +1129,10 @@ module.exports = {
   getValidCoupons,
   applyCoupon,
   getLatestValidCoupon,
+  bookHomestayComplete,
+  getUserBookings,
+  markAsCheckedIn,
+  markAsCheckedOut,
+  markAsCancelled,
+  checkFutureBooking
 }

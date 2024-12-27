@@ -31,6 +31,30 @@ const bookingSchema = new mongoose.Schema({
         ref: 'Coupon',
         // required: true,
     },
+    amount: {
+        type: Number,
+        required: true,
+    },
+    paymentId: {
+        type: String,
+        required: true,
+    },
+    orderId: {
+        type: String,
+        required: true,
+    },
+    isCheckedIn: {
+        type: Boolean,
+        default: false,
+    },
+    isCheckedOut: {
+        type: Boolean,
+        default: false,
+    },
+    isCancelled: {
+        type: Boolean,
+        default: false,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

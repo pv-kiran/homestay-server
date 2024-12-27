@@ -28,6 +28,8 @@ const {
   createCoupon,
   toggleCouponStatus,
   getAllCoupons,
+  getAllBookings,
+  reorderImages
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -73,6 +75,8 @@ router.post("/get-allhomestays", getAllHomestays);
 router.post("/get-allusers", getAllUsers);
 router.get("/get-user/:userId", getUserById);
 router.put("/toggle-user/:userId", toggleUserStatus);
+router.post("/get-allbookings", getAllBookings);
+router.put("/homestay/:id/images", reorderImages);
 
 router.post("/add-coupon",createCoupon);
 router.put("/update-coupon/:id",updateCoupon);

@@ -64,14 +64,21 @@ const validateCategory = Joi.object({
 });
 
 const validateAmenity = Joi.object({
-    amenityName: Joi.string().min(3).max(30).required().messages({
-      "string.base": "Amenity name should be a string",
-      "string.empty": "Amenity name cannot be empty",
-      "string.min": "Amenity name should have a minimum length of 3",
-      "string.max": "Amenity name should have a maximum length of 30",
-      "any.required": "Amenity name is required",
-    }),
-  });
+  amenityName: Joi.string().min(3).max(30).required().messages({
+    "string.base": "Amenity name should be a string",
+    "string.empty": "Amenity name cannot be empty",
+    "string.min": "Amenity name should have a minimum length of 3",
+    "string.max": "Amenity name should have a maximum length of 30",
+    "any.required": "Amenity name is required",
+  }),
+  description: Joi.string().min(3).max(10).required().messages({
+    "string.base": "Description should be a string",
+    "string.empty": "Description cannot be empty",
+    "string.min": "Description should have a minimum length of 5",
+    "string.max": "Description should have a maximum length of 10",
+    "any.required": "Description is required",
+  }),
+});
 
 const validateHomestay = Joi.object({
   title: Joi.string().required().messages({
@@ -116,6 +123,14 @@ const validateHomestay = Joi.object({
         "number.base": "Longitude must be a number.",
         "any.required": "Longitude is required.",
       }),
+      nearByLatitude: Joi.number().required().messages({
+        "number.base": "Latitude must be a number.",
+        "any.required": "Latitude is required.",
+      }),
+      nearByLongitude: Joi.number().required().messages({
+        "number.base": "Longitude must be a number.",
+        "any.required": "Longitude is required.",
+      }),
     })
       .required()
       .messages({
@@ -126,8 +141,8 @@ const validateHomestay = Joi.object({
     .messages({
       "any.required": "Address is required.",
     }),
-    homestayImages: Joi.array().items(Joi.string()).optional(),
-    amenityIds: Joi.array()
+  homestayImages: Joi.array().items(Joi.string()).optional(),
+  amenityIds: Joi.array()
     .items(
       Joi.string()
         .required()
@@ -262,7 +277,7 @@ const validateHomestayId = Joi.object({
 });
 
 const validateUserId = Joi.object({
-    userId: Joi.string().custom(objectIdValidation).required(),
+  userId: Joi.string().custom(objectIdValidation).required(),
 });
 
 const validateUserUpdate = Joi.object({
