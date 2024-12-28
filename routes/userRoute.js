@@ -22,7 +22,8 @@ const {
   markAsCheckedIn,
   markAsCheckedOut,
   markAsCancelled,
-  checkFutureBooking
+  checkFutureBooking,
+  submitReview,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -58,6 +59,8 @@ router.get('/homestay/booking/:homeStayId/status', authenticateToken, isUser, ch
 router.get("/get-coupons", authenticateToken, isUser, getValidCoupons);
 router.post("/apply-coupon", authenticateToken, isUser, applyCoupon);
 router.get("/get-latestcoupon", getLatestValidCoupon);
+
+router.post("/submit-review", authenticateToken, isUser, submitReview);
 
 
 module.exports = router;
