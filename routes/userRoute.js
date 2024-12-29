@@ -24,6 +24,7 @@ const {
   markAsCancelled,
   checkFutureBooking,
   submitReview,
+  getReviewsByHomestay,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -61,6 +62,7 @@ router.post("/apply-coupon", authenticateToken, isUser, applyCoupon);
 router.get("/get-latestcoupon", getLatestValidCoupon);
 
 router.post("/submit-review", authenticateToken, isUser, submitReview);
+router.get("/test/:homeStayId", getReviewsByHomestay);
 
 
 module.exports = router;

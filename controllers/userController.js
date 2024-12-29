@@ -503,7 +503,7 @@ const getHomestayById = async (req, res) => {
   //     message: error.details[0].message,
   //   });
   // }
-
+ 
   const { homestayId, currency } = req.params;
 
 
@@ -1189,6 +1189,42 @@ const submitReview = async (req, res) => {
   }
 }
 
+//USER - GET REVIEWS BY HOMESTAY
+const getReviewsByHomestay = async (req, res) => {
+  const { homeStayId } = req.params;
+  try {
+    // if (!mongoose.Types.ObjectId.isValid(homeStayId)) {
+    //   return res.status(400).json({
+    //       success: false,
+    //       message: 'Homestay ID is required',
+    //   });
+    // }
+
+    const reviews = await Review.find({ homestayId:homeStayId })
+          .populate('userId', 'fullName email profilePic') // Populate name and email fields of the user
+          .sort({ createdAt: -1 });
+
+    if (reviews?.length === 0) {
+      return res.status(404).json({
+          success: false,
+          message: 'No reviews found for this homestay',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reviews fetched successfully',
+      data: reviews,
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching reviews',
+    });
+  }
+}
+
 
 module.exports = {
   userSignup,
@@ -1215,4 +1251,5 @@ module.exports = {
   markAsCancelled,
   checkFutureBooking,
   submitReview,
+  getReviewsByHomestay,
 }
