@@ -2,6 +2,7 @@ const { default: axios } = require("axios");
 const User = require("../models/user");
 const Homestay = require("../models/homestays");
 const Category = require("../models/category");
+const Coupon = require("../models/coupon");
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
 const { getToken } = require("../utils/jwtHelper");
@@ -12,10 +13,15 @@ const {
   userValidationSchema,
   validateHomestayId,
   validateUserUpdate,
+  validateApplyCoupon,
 } = require("../utils/validationHelper");
 
 const Booking = require("../models/booking");
+
+const { cloudinary } = require("../utils/cloudinaryHelper");
+const { upload } = require("../utils/multerHelper");
 const { razorpay } = require("../utils/razorpay");
+
 
 const userSignup = async (req, res) => {
   const { error } = validateUserSignup.validate(req.body);
@@ -784,6 +790,89 @@ const updateUserData = async (req, res) => {
   }
 }
 
+//USER - PROFILE PICTURE UPDATE
+const updateProPic = async (req, res) => {
+  
+  upload.single("profilePic")(req, res, async (uploadError) => {
+    if (uploadError) {
+      return res.status(500).json({ message: "profilePic upload error" });
+    }
+    try {
+      const userId = req.userId;
+
+      const existingUser = await User.findById(userId);
+      if (!existingUser) {
+        return res
+          .status(404)
+          .json({ message: "User not found" });
+      }
+
+      let profilePicUrl = req.body.profilePic; 
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path);
+          profilePicUrl = result.secure_url;
+        } catch (cloudinaryError) {
+          return res
+            .status(500)
+            .json({ message: "Error in uploading profile picture to Cloudinary" });
+        }
+      }
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { profilePic: profilePicUrl },
+        { new: true }
+      );
+      res.status(200).json({
+        success: true,
+        message: "Profile picture updated successfully",
+        profilePic: updatedUser.profilePic,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+}
+
+//USER - GET ALL VALID COUPONS
+const getValidCoupons = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const today = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(today.getMonth() + 1);
+
+    const coupons = await Coupon.find({
+      expiryDate: { $gte: today, $lte: nextMonth },
+      isActive: true, // Ensure coupon is active
+    });
+
+    // Filter coupons based on usageLimit, usageCount, and userRestrictions
+    const filteredCoupons = coupons.filter((coupon) => {
+      // Check if the coupon has a usage limit and if the limit is reached
+      if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+        return false;
+      }
+      // Check user-specific usage restrictions
+      const userUsage = coupon.userRestrictions?.get(userId) || 0;
+      if (userUsage > 0) {
+        return false;
+      }
+      return true; // Include the coupon if all conditions are satisfied
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredCoupons,
+    });
+  } catch (error) {
+      console.error("Error fetching coupons:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch coupons",
+    });
+  }
+}
 const getUserBookings = async (req, res) => {
 
   try {
@@ -913,6 +1002,116 @@ const checkFutureBooking = async (req, res) => {
 }
 
 
+//USER - APPLY COUPON
+const applyCoupon = async (req, res) => {
+  try {
+    const { error } = validateApplyCoupon.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success:false, message: error.details[0].message });
+    }
+
+    const userId = req.userId;
+    const { couponCode, homestayId, numberOfDays } = req.body;
+
+    const coupon = await Coupon.findOne({code : couponCode});
+    if (!coupon) {
+      return res.status(404).json({ success:false, message: 'Coupon not found.' });
+    }
+
+    // Check if the coupon is expired
+    if (coupon.expiryDate < new Date()) {
+      return res.status(400).json({ success:false, message: 'Coupon has expired' });
+    }
+
+    // Check if the coupon is active
+    if (!coupon.isActive) {
+      return res.status(400).json({ success:false, message: 'Coupon is no longer active' });
+    }
+
+    // Check if the user has already redeemed the coupon
+    const userUsageCount = coupon.userRestrictions.get(userId);
+    if (userUsageCount) {
+      return res.status(400).json({ success:false, message: 'You have already applied this coupon' });
+    }
+
+    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+      return res.status(400).json({ success:false, message: 'Coupon usage limit exceeded.' });
+    }
+
+    const homestay = await Homestay.findById(homestayId);
+    if (!homestay) {
+      return res.status(404).json({ success:false, message: 'Homestay not found.' });
+    }
+
+    const totalPrice = homestay.pricePerNight * numberOfDays;
+    let discountAmount = 0;
+
+    if (coupon.discountType === 'percentage') {
+      discountAmount = (totalPrice * coupon.discountValue) / 100;
+      if (coupon.maxDiscount !== null) {
+        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+      }
+    } else if (coupon.discountType === 'fixed') {
+      discountAmount = coupon.discountValue;
+    }
+
+    const newPrice = totalPrice - discountAmount;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon applied successfully.',
+      data :{
+        originalPrice: totalPrice,
+        discountAmount,
+        newPrice,
+        discountType: coupon?.discountType,
+        code: coupon?.code,
+        value: coupon?.discountValue,
+      }
+    });
+  } catch (error) {
+    console.error('Error applying coupon:', err);
+    res.status(500).json({ message: 'Something went wrong'});
+  }
+}
+
+//USER - GET  LATEST COUPON FOR LANDING PAGE AD
+const getLatestValidCoupon = async (req, res) => {
+  try {
+    // Fetch the current date
+    const currentDate = new Date();
+
+    // Find the latest added coupon that satisfies all conditions
+    const latestCoupon = await Coupon.findOne({
+        isActive: true, // Coupon must be active
+        expiryDate: { $gt: currentDate },
+        discountType: 'percentage', 
+        $or: [
+            { usageLimit: null }, // Unlimited usage
+            { $expr: { $gt: ["$usageLimit", "$usageCount"] } }, // Usage limit not reached
+        ],
+    }).sort({ createdAt: -1 }); // Get the most recently created coupon
+
+    // If no coupon found, return a message
+    if (!latestCoupon) {
+        return res.status(404).json({ message: 'No valid coupon found.' });
+    }
+
+    // Return the coupon details
+    return res.status(200).json({
+        success: true,
+        coupon: latestCoupon,
+    });
+} catch (error) {
+    // Handle any potential errors
+    console.error('Error fetching the latest valid coupon:', error);
+    return res.status(500).json({
+        success: false,
+        message: 'An error occurred while fetching the coupon.',
+        error: error.message,
+    });
+}
+}
 
 
 module.exports = {
@@ -929,6 +1128,10 @@ module.exports = {
   updateUserData,
   getAvailableHomestayAddresses,
   bookHomestay,
+  updateProPic,
+  getValidCoupons,
+  applyCoupon,
+  getLatestValidCoupon,
   bookHomestayComplete,
   getUserBookings,
   markAsCheckedIn,

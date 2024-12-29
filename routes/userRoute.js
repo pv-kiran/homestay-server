@@ -13,6 +13,10 @@ const {
   bookHomestay,
   getUserById,
   updateUserData,
+  updateProPic,
+  getValidCoupons,
+  applyCoupon,
+  getLatestValidCoupon,
   bookHomestayComplete,
   getUserBookings,
   markAsCheckedIn,
@@ -31,6 +35,8 @@ router.post("/auth/google/signin", googleSignIn);
 router.put("/account/setup/complete/:userId", userAccountCreation);
 router.get("/auth/signout", userLogout);
 router.post("/auth/update-profile", authenticateToken, updateUserData);
+router.get("/auth/view-profile", authenticateToken, getUserById);
+router.put("/auth/update-propic", authenticateToken, updateProPic);
 router.get("/auth/view-profile", authenticateToken, getUserById)
 
 router.post("/get-allhomestays", getAllHomestays);
@@ -48,6 +54,10 @@ router.patch('/homestay/checkout/:bookingId', authenticateToken, isUser, markAsC
 router.patch('/homestay/cancel/:bookingId', authenticateToken, isUser, markAsCancelled);
 
 router.get('/homestay/booking/:homeStayId/status', authenticateToken, isUser, checkFutureBooking);
+
+router.get("/get-coupons", authenticateToken, isUser, getValidCoupons);
+router.post("/apply-coupon", authenticateToken, isUser, applyCoupon);
+router.get("/get-latestcoupon", getLatestValidCoupon);
 
 
 module.exports = router;
