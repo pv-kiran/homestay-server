@@ -354,6 +354,28 @@ const validateApplyCoupon = Joi.object({
     'number.base': 'Number of days must be a number.',
     'number.min': 'Number of days must be at least 1.',
   }),
+});
+
+const validateSubmitReview = Joi.object({
+  homestayId: Joi.string().required().messages({
+    'any.required': 'Homestay ID is required.',
+    'string.base': 'Homestay ID must be a string.',
+  }),
+  rating: Joi.number()
+    .integer()
+    .min(1)
+    .max(5)
+    .required()
+    .messages({
+      "any.required": 'Rating must be an integer between 1 and 5.'
+    }),
+  reviewText: Joi.string()
+    .min(10)
+    .max(500)
+    .required()
+    .messages({
+      "any.required": 'Review text must be between 10 and 500 characters.'
+    }),
 })
 
 module.exports = {
@@ -371,5 +393,6 @@ module.exports = {
   validateUserUpdate,
   validateCreateCoupon,
   validateUpdateCoupon,
-  validateApplyCoupon
+  validateApplyCoupon,
+  validateSubmitReview,
 };

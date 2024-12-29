@@ -14,9 +14,11 @@ const {
   validateHomestayId,
   validateUserUpdate,
   validateApplyCoupon,
+  validateSubmitReview,
 } = require("../utils/validationHelper");
 
 const Booking = require("../models/booking");
+const Review = require("../models/review");
 
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
@@ -922,7 +924,8 @@ const getUserBookings = async (req, res) => {
       homestayAddress: booking.homestayId?.address || null,
       isCheckedIn: booking?.isCheckedIn,
       isCheckedOut: booking?.isCheckedOut,
-      isCancelled: booking?.isCancelled
+      isCancelled: booking?.isCancelled,
+      homestayId: booking?.homestayId._id
     }));
 
     res.status(200).json(bookingDetails);
@@ -943,12 +946,22 @@ const markAsCheckedIn = async (req, res) => {
     );
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    res.status(200).json({ success: true, message: 'Checked in successfully', booking });
+    res.status(200).json({
+      success: true,
+      message: 'Checked in successfully',
+      booking
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };
 
@@ -963,12 +976,22 @@ const markAsCheckedOut = async (req, res) => {
     );
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    res.status(200).json({ success: true, message: 'Checked out successfully', booking });
+    res.status(200).json({
+      success: true,
+      message: 'Checked out successfully',
+      booking
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };
 
@@ -983,12 +1006,21 @@ const markAsCancelled = async (req, res) => {
     );
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
-
-    res.status(200).json({ success: true, message: 'Booking cancelled successfully', booking });
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      booking
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };
 
@@ -1148,6 +1180,88 @@ const getLatestValidCoupon = async (req, res) => {
   }
 }
 
+//USER - SUBMIT REVIEW
+const submitReview = async (req, res) => {
+  try {
+    const { error } = validateSubmitReview.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    const userId = req.userId;
+    const { homestayId, rating, reviewText } = req.body;
+
+    const booking = await Booking.findOne({
+      userId,
+      homestayId,
+      isCheckedOut: true,
+    });
+
+    if (!booking) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only review after checkout.'
+      });
+    }
+
+    const existingReview = await Review.findOne({ userId, homestayId });
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already submitted a review for this homestay.'
+      });
+    }
+
+    const review = new Review({ userId, homestayId, rating, reviewText });
+    await review.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Review submitted successfully',
+      // review 
+    });
+  } catch (error) {
+    console.error('Error submitting review:', error);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+}
+
+//USER - GET REVIEWS BY HOMESTAY
+const getReviewsByHomestay = async (req, res) => {
+  const { homeStayId } = req.params;
+  try {
+    // if (!mongoose.Types.ObjectId.isValid(homeStayId)) {
+    //   return res.status(400).json({
+    //       success: false,
+    //       message: 'Homestay ID is required',
+    //   });
+    // }
+
+    const reviews = await Review.find({ homestayId: homeStayId })
+      .populate('userId', 'fullName email profilePic') // Populate name and email fields of the user
+      .sort({ createdAt: -1 });
+
+    if (reviews?.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No reviews found for this homestay',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reviews fetched successfully',
+      data: reviews,
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching reviews',
+    });
+  }
+}
+
 
 module.exports = {
   userSignup,
@@ -1172,5 +1286,7 @@ module.exports = {
   markAsCheckedIn,
   markAsCheckedOut,
   markAsCancelled,
-  checkFutureBooking
+  checkFutureBooking,
+  submitReview,
+  getReviewsByHomestay,
 }
