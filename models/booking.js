@@ -19,6 +19,18 @@ const bookingSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
+    originalPrice: {
+        type: Number,
+        // required: true,
+    },
+    discountedPrice: {
+        type: Number,
+    },
+    couponCode: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Coupon',
+        // required: true,
+    },
     amount: {
         type: Number,
         required: true,

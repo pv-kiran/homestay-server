@@ -293,6 +293,65 @@ const validateUserUpdate = Joi.object({
   gender: Joi.string().valid("Male", "Female", "Other").required(),
 });
 
+const validateCreateCoupon = Joi.object({
+  code: Joi.string().required().trim().messages({
+    "string.empty": "Coupon code is required",
+  }),
+  description: Joi.string().required().messages({
+    "any.required": "Description is required.",
+    "string.base": "Description should be a string",
+    "string.empty": "Description cannot be empty",
+    "string.min": "Description should have a minimum length of 3",
+  }),
+  discountType: Joi.string().valid('percentage', 'fixed').required().messages({
+    "any.only": "Discount type must be either 'percentage' or 'fixed'",
+  }),
+  discountValue: Joi.number().positive().required().messages({
+    "number.base": "Discount value must be a number",
+    "number.positive": "Discount value must be greater than 0",
+  }),
+  maxDiscount: Joi.number().positive().optional().messages({
+    "number.base": "Max discount must be a number",
+    "number.positive": "Max discount must be greater than 0",
+  }),
+  expiryDate: Joi.date().greater('now').required().messages({
+    "date.base": "Expiry date must be a valid date",
+    "date.greater": "Expiry date must be in the future",
+  }),
+  usageLimit: Joi.number().integer().positive().required().messages({
+    "number.base": "Usage limit must be a number",
+    "number.positive": "Usage limit must be greater than 0",
+    "number.integer": "Usage limit must be an integer",
+  }),
+});
+
+const validateUpdateCoupon = Joi.object({
+  code: Joi.string().min(3).max(20).optional(),
+  description: Joi.string().min(3).optional(),
+  discountType: Joi.string().valid('percentage', 'fixed').optional(),
+  discountValue: Joi.number().positive().optional(),
+  maxDiscount: Joi.number().positive().optional(),
+  expiryDate: Joi.date().greater('now').optional(),
+  usageLimit: Joi.number().integer().positive().optional(),
+  usageCount: Joi.number().integer().min(0).optional(), 
+});
+
+const validateApplyCoupon = Joi.object({
+  couponCode: Joi.string().required().messages({
+    'any.required': 'Coupon code is required.',
+    'string.base': 'Coupon code must be a string.',
+  }),
+  homestayId: Joi.string().required().messages({
+    'any.required': 'Homestay ID is required.',
+    'string.base': 'Homestay ID must be a string.',
+  }),
+  numberOfDays: Joi.number().integer().min(1).required().messages({
+      'any.required': 'Number of days is required.',
+      'number.base': 'Number of days must be a number.',
+      'number.min': 'Number of days must be at least 1.',
+  }),
+})
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -306,4 +365,7 @@ module.exports = {
   validateAmenity,
   validateUserId,
   validateUserUpdate,
+  validateCreateCoupon,
+  validateUpdateCoupon,
+  validateApplyCoupon
 };
