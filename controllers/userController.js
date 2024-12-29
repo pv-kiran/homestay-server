@@ -1055,7 +1055,6 @@ const checkFutureBooking = async (req, res) => {
 }
 
 
-//USER - APPLY COUPON
 const applyCoupon = async (req, res) => {
   try {
     const { error } = validateApplyCoupon.validate(req.body);
@@ -1066,81 +1065,96 @@ const applyCoupon = async (req, res) => {
     const userId = req.userId;
     const { couponCode, homestayId, numberOfDays, currencyCode } = req.body;
 
+    // Fetch coupon details
     const coupon = await Coupon.findOne({ code: couponCode });
     if (!coupon) {
       return res.status(404).json({ success: false, message: 'Coupon not found.' });
     }
 
-    // Check if the coupon is expired
-    if (coupon.expiryDate < new Date()) {
-      return res.status(400).json({ success: false, message: 'Coupon has expired' });
+    // Check coupon validity
+    if (coupon.expiryDate && coupon.expiryDate < new Date()) {
+      return res.status(400).json({ success: false, message: 'Coupon has expired.' });
     }
 
-    // Check if the coupon is active
     if (!coupon.isActive) {
-      return res.status(400).json({ success: false, message: 'Coupon is no longer active' });
+      return res.status(400).json({ success: false, message: 'Coupon is no longer active.' });
     }
 
-    // Check if the user has already redeemed the coupon
-    const userUsageCount = coupon.userRestrictions.get(userId);
-    if (userUsageCount) {
-      return res.status(400).json({ success: false, message: 'You have already applied this coupon' });
+    // Check if the user has already used the coupon
+    if (coupon.userRestrictions?.get(userId)) {
+      return res.status(400).json({ success: false, message: 'You have already applied this coupon.' });
     }
 
+    // Check usage limit
     if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
       return res.status(400).json({ success: false, message: 'Coupon usage limit exceeded.' });
     }
 
+    // Fetch homestay details
     const homestay = await Homestay.findById(homestayId);
     if (!homestay) {
       return res.status(404).json({ success: false, message: 'Homestay not found.' });
     }
 
+    const totalPrice = homestay.pricePerNight * numberOfDays;
 
-    let conversion_rate = 1;
+    // Initialize conversion rate
+    let conversionRate = 1;
     if (currencyCode && currencyCode !== 'INR') {
       try {
-        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currencyCode}`);
-        console.log(data);
-        conversion_rate = data?.conversion_rate;
-      } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
+        const { data } = await axios.get(
+          `https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currencyCode}`
+        );
+        conversionRate = data?.conversion_rate || 1;
+      } catch (error) {
+        console.error('Currency conversion error:', error);
+        return res.status(500).json({ success: false, message: 'Currency conversion failed.' });
       }
     }
 
-    const totalPrice = (homestay.pricePerNight * numberOfDays)
+    const convertedTotalPrice = totalPrice * conversionRate;
 
-
+    // Calculate discount
     let discountAmount = 0;
-
     if (coupon.discountType === 'percentage') {
-      discountAmount = (totalPrice * coupon.discountValue) / 100;
-      if (coupon.maxDiscount !== null) {
+      discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
+      if (coupon.maxDiscount) {
+        console.log(discountAmount, coupon.maxDiscount * conversionRate)
+        console.log(coupon.maxDiscount);
         discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        console.log(discountAmount)
       }
     } else if (coupon.discountType === 'fixed') {
-      discountAmount = coupon.discountValue;
+      discountAmount = coupon.discountValue * conversionRate;
     }
-    const newPrice = totalPrice - discountAmount;
 
+    const newPrice = convertedTotalPrice - discountAmount;
 
+    // Validate the final calculated prices
+    if (newPrice < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid discount calculation.' });
+    }
+
+    // Send response
     return res.status(200).json({
       success: true,
       message: 'Coupon applied successfully.',
       data: {
-        originalPrice: totalPrice,
-        discountAmount: (discountAmount * conversion_rate).toFixed(0),
-        newPrice: (newPrice * conversion_rate)?.toFixed(0),
-        discountType: coupon?.discountType,
-        code: coupon?.code,
-        value: coupon?.discountValue,
-      }
+        originalPrice: convertedTotalPrice.toFixed(2),
+        discountAmount: discountAmount.toFixed(2),
+        newPrice: newPrice.toFixed(2),
+        discountType: coupon.discountType,
+        code: coupon.code,
+        value: coupon.discountValue,
+      },
     });
   } catch (error) {
     console.error('Error applying coupon:', error);
-    res.status(500).json({ message: 'Something went wrong' });
+    return res.status(500).json({ success: false, message: 'Something went wrong.' });
   }
-}
+};
+
+
 
 //USER - GET  LATEST COUPON FOR LANDING PAGE AD
 const getLatestValidCoupon = async (req, res) => {
