@@ -672,6 +672,7 @@ const bookHomestayComplete = async (req, res) => {
       });
     }
 
+    1
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
@@ -835,7 +836,7 @@ const markAsCheckedIn = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    res.status(200).json({ message: 'Checked in successfully', booking });
+    res.status(200).json({ success: true, message: 'Checked in successfully', booking });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error', error });
   }
@@ -855,7 +856,7 @@ const markAsCheckedOut = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    res.status(200).json({ message: 'Checked out successfully', booking });
+    res.status(200).json({ success: true, message: 'Checked out successfully', booking });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error', error });
   }
@@ -875,7 +876,7 @@ const markAsCancelled = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    res.status(200).json({ message: 'Booking cancelled successfully', booking });
+    res.status(200).json({ success: true, message: 'Booking cancelled successfully', booking });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error', error });
   }
@@ -884,6 +885,7 @@ const markAsCancelled = async (req, res) => {
 
 const checkFutureBooking = async (req, res) => {
   const { homeStayId } = req.params
+  console.log(homeStayId, req?.userId)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   try {
@@ -902,9 +904,10 @@ const checkFutureBooking = async (req, res) => {
     }
     res.status(200).json({
       status: false,
-      checkIn: booking.null,
+      checkIn: null,
     });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ message: 'Internal server error', error });
   }
 }

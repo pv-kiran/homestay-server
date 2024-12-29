@@ -243,20 +243,20 @@ const userValidationSchema = Joi.object({
     "string.base": "Email must be a string",
   }),
 
-  dob: Joi.date()
-    .iso()
-    .required()
-    .custom((value, helpers) => {
-      if (is18OrOlder(value) < 18) {
-        return helpers.message("User must be at least 18 years old");
-      }
-      return value;
-    })
-    .messages({
-      "any.required": "Date of birth is required",
-      "date.base": "Date of birth must be a valid date",
-      "date.format": "Date of birth must be in ISO format (YYYY-MM-DD)",
-    }),
+  // dob: Joi.date()
+  //   .iso()
+  //   .required()
+  //   .custom((value, helpers) => {
+  //     if (is18OrOlder(value) < 18) {
+  //       return helpers.message("User must be at least 18 years old");
+  //     }
+  //     return value;
+  //   })
+  //   .messages({
+  //     "any.required": "Date of birth is required",
+  //     "date.base": "Date of birth must be a valid date",
+  //     "date.format": "Date of birth must be in ISO format (YYYY-MM-DD)",
+  //   }),
 
   isMarketingAllowed: Joi.boolean().messages({
     "boolean.base":
