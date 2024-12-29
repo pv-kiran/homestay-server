@@ -577,9 +577,10 @@ const getAvailableHomestayAddresses = async (req, res) => {
 
 const bookHomestay = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, currency } = req.body;
+    const { homestayId, checkIn, checkOut, currency, couponCode } = req.body;
 
     console.log(currency);
+    console.log(couponCode)
     // 1. Validate the input
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -626,18 +627,40 @@ const bookHomestay = async (req, res) => {
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     let amount = dailyRate * numDays;
-
+    let conversionRate = 1;
     if (currency && currency.code !== 'INR') {
       try {
         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency.code}`);
+        conversionRate = data?.conversion_rate;
         amount = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
         console.error('Currency conversion error:', conversionError);
       }
     }
 
+    let discountAmount = 0;
+    if (couponCode) {
+      console.log(couponCode);
+      const coupon = await Coupon.findOne({ code: couponCode });
+      if (!coupon) {
+        return res.status(404).json({ success: false, message: 'Coupon not found.' });
+      }
+
+
+      if (coupon.discountType === 'percentage') {
+        discountAmount = (amount * coupon.discountValue) / 100;
+        if (coupon.maxDiscount !== null) {
+          discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        }
+      } else if (coupon.discountType === 'fixed') {
+        discountAmount = coupon.discountValue * conversionRate;
+      }
+    }
+    const newPrice = amount - discountAmount;
+
+
     const options = {
-      amount: amount * 100, // Amount in paise
+      amount: Math.round(newPrice * 100), // Amount in paise
       currency: currency.code,
       receipt: `receipt_${Date.now()}`,
     };
@@ -688,8 +711,6 @@ const bookHomestayComplete = async (req, res) => {
         message: 'Check-out date must be after the check-in date.',
       });
     }
-
-
 
     const homestay = await Homestay.findById(homestayId);
     if (!homestay) {
@@ -792,7 +813,7 @@ const updateUserData = async (req, res) => {
 
 //USER - PROFILE PICTURE UPDATE
 const updateProPic = async (req, res) => {
-  
+
   upload.single("profilePic")(req, res, async (uploadError) => {
     if (uploadError) {
       return res.status(500).json({ message: "profilePic upload error" });
@@ -807,7 +828,7 @@ const updateProPic = async (req, res) => {
           .json({ message: "User not found" });
       }
 
-      let profilePicUrl = req.body.profilePic; 
+      let profilePicUrl = req.body.profilePic;
       if (req.file) {
         try {
           const result = await cloudinary.uploader.upload(req.file.path);
@@ -866,10 +887,10 @@ const getValidCoupons = async (req, res) => {
       data: filteredCoupons,
     });
   } catch (error) {
-      console.error("Error fetching coupons:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch coupons",
+    console.error("Error fetching coupons:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch coupons",
     });
   }
 }
@@ -1007,43 +1028,57 @@ const applyCoupon = async (req, res) => {
   try {
     const { error } = validateApplyCoupon.validate(req.body);
     if (error) {
-      return res.status(400).json({ success:false, message: error.details[0].message });
+      return res.status(400).json({ success: false, message: error.details[0].message });
     }
 
     const userId = req.userId;
-    const { couponCode, homestayId, numberOfDays } = req.body;
+    const { couponCode, homestayId, numberOfDays, currencyCode } = req.body;
 
-    const coupon = await Coupon.findOne({code : couponCode});
+    const coupon = await Coupon.findOne({ code: couponCode });
     if (!coupon) {
-      return res.status(404).json({ success:false, message: 'Coupon not found.' });
+      return res.status(404).json({ success: false, message: 'Coupon not found.' });
     }
 
     // Check if the coupon is expired
     if (coupon.expiryDate < new Date()) {
-      return res.status(400).json({ success:false, message: 'Coupon has expired' });
+      return res.status(400).json({ success: false, message: 'Coupon has expired' });
     }
 
     // Check if the coupon is active
     if (!coupon.isActive) {
-      return res.status(400).json({ success:false, message: 'Coupon is no longer active' });
+      return res.status(400).json({ success: false, message: 'Coupon is no longer active' });
     }
 
     // Check if the user has already redeemed the coupon
     const userUsageCount = coupon.userRestrictions.get(userId);
     if (userUsageCount) {
-      return res.status(400).json({ success:false, message: 'You have already applied this coupon' });
+      return res.status(400).json({ success: false, message: 'You have already applied this coupon' });
     }
 
     if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
-      return res.status(400).json({ success:false, message: 'Coupon usage limit exceeded.' });
+      return res.status(400).json({ success: false, message: 'Coupon usage limit exceeded.' });
     }
 
     const homestay = await Homestay.findById(homestayId);
     if (!homestay) {
-      return res.status(404).json({ success:false, message: 'Homestay not found.' });
+      return res.status(404).json({ success: false, message: 'Homestay not found.' });
     }
 
-    const totalPrice = homestay.pricePerNight * numberOfDays;
+
+    let conversion_rate = 1;
+    if (currencyCode && currencyCode !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currencyCode}`);
+        console.log(data);
+        conversion_rate = data?.conversion_rate;
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+
+    const totalPrice = (homestay.pricePerNight * numberOfDays)
+
+
     let discountAmount = 0;
 
     if (coupon.discountType === 'percentage') {
@@ -1054,24 +1089,24 @@ const applyCoupon = async (req, res) => {
     } else if (coupon.discountType === 'fixed') {
       discountAmount = coupon.discountValue;
     }
-
     const newPrice = totalPrice - discountAmount;
+
 
     return res.status(200).json({
       success: true,
       message: 'Coupon applied successfully.',
-      data :{
+      data: {
         originalPrice: totalPrice,
-        discountAmount,
-        newPrice,
+        discountAmount: (discountAmount * conversion_rate).toFixed(0),
+        newPrice: (newPrice * conversion_rate)?.toFixed(0),
         discountType: coupon?.discountType,
         code: coupon?.code,
         value: coupon?.discountValue,
       }
     });
   } catch (error) {
-    console.error('Error applying coupon:', err);
-    res.status(500).json({ message: 'Something went wrong'});
+    console.error('Error applying coupon:', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 }
 
@@ -1083,34 +1118,34 @@ const getLatestValidCoupon = async (req, res) => {
 
     // Find the latest added coupon that satisfies all conditions
     const latestCoupon = await Coupon.findOne({
-        isActive: true, // Coupon must be active
-        expiryDate: { $gt: currentDate },
-        discountType: 'percentage', 
-        $or: [
-            { usageLimit: null }, // Unlimited usage
-            { $expr: { $gt: ["$usageLimit", "$usageCount"] } }, // Usage limit not reached
-        ],
+      isActive: true, // Coupon must be active
+      expiryDate: { $gt: currentDate },
+      discountType: 'percentage',
+      $or: [
+        { usageLimit: null }, // Unlimited usage
+        { $expr: { $gt: ["$usageLimit", "$usageCount"] } }, // Usage limit not reached
+      ],
     }).sort({ createdAt: -1 }); // Get the most recently created coupon
 
     // If no coupon found, return a message
     if (!latestCoupon) {
-        return res.status(404).json({ message: 'No valid coupon found.' });
+      return res.status(404).json({ message: 'No valid coupon found.' });
     }
 
     // Return the coupon details
     return res.status(200).json({
-        success: true,
-        coupon: latestCoupon,
+      success: true,
+      coupon: latestCoupon,
     });
-} catch (error) {
+  } catch (error) {
     // Handle any potential errors
     console.error('Error fetching the latest valid coupon:', error);
     return res.status(500).json({
-        success: false,
-        message: 'An error occurred while fetching the coupon.',
-        error: error.message,
+      success: false,
+      message: 'An error occurred while fetching the coupon.',
+      error: error.message,
     });
-}
+  }
 }
 
 

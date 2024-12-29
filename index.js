@@ -42,10 +42,10 @@ app.use("/api/user", userRoutes)
 
 
 
-cron.schedule('*/1 * * * *', async () => {
-  console.log('Cron job started...');
-  await sendCheckInReminders()
-});
+// cron.schedule('*/1 * * * *', async () => {
+//   console.log('Cron job started...');
+//   await sendCheckInReminders()
+// });
 
 
 

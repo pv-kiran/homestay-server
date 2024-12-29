@@ -333,11 +333,15 @@ const validateUpdateCoupon = Joi.object({
   maxDiscount: Joi.number().positive().optional(),
   expiryDate: Joi.date().greater('now').optional(),
   usageLimit: Joi.number().integer().positive().optional(),
-  usageCount: Joi.number().integer().min(0).optional(), 
+  usageCount: Joi.number().integer().min(0).optional(),
 });
 
 const validateApplyCoupon = Joi.object({
   couponCode: Joi.string().required().messages({
+    'any.required': 'Coupon code is required.',
+    'string.base': 'Coupon code must be a string.',
+  }),
+  currencyCode: Joi.string().required().messages({
     'any.required': 'Coupon code is required.',
     'string.base': 'Coupon code must be a string.',
   }),
@@ -346,9 +350,9 @@ const validateApplyCoupon = Joi.object({
     'string.base': 'Homestay ID must be a string.',
   }),
   numberOfDays: Joi.number().integer().min(1).required().messages({
-      'any.required': 'Number of days is required.',
-      'number.base': 'Number of days must be a number.',
-      'number.min': 'Number of days must be at least 1.',
+    'any.required': 'Number of days is required.',
+    'number.base': 'Number of days must be a number.',
+    'number.min': 'Number of days must be at least 1.',
   }),
 })
 
