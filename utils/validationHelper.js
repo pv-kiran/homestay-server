@@ -243,20 +243,20 @@ const userValidationSchema = Joi.object({
     "string.base": "Email must be a string",
   }),
 
-  dob: Joi.date()
-    .iso()
-    .required()
-    .custom((value, helpers) => {
-      if (is18OrOlder(value) < 18) {
-        return helpers.message("User must be at least 18 years old");
-      }
-      return value;
-    })
-    .messages({
-      "any.required": "Date of birth is required",
-      "date.base": "Date of birth must be a valid date",
-      "date.format": "Date of birth must be in ISO format (YYYY-MM-DD)",
-    }),
+  // dob: Joi.date()
+  //   .iso()
+  //   .required()
+  //   .custom((value, helpers) => {
+  //     if (is18OrOlder(value) < 18) {
+  //       return helpers.message("User must be at least 18 years old");
+  //     }
+  //     return value;
+  //   })
+  //   .messages({
+  //     "any.required": "Date of birth is required",
+  //     "date.base": "Date of birth must be a valid date",
+  //     "date.format": "Date of birth must be in ISO format (YYYY-MM-DD)",
+  //   }),
 
   isMarketingAllowed: Joi.boolean().messages({
     "boolean.base":
@@ -333,11 +333,15 @@ const validateUpdateCoupon = Joi.object({
   maxDiscount: Joi.number().positive().optional(),
   expiryDate: Joi.date().greater('now').optional(),
   usageLimit: Joi.number().integer().positive().optional(),
-  usageCount: Joi.number().integer().min(0).optional(), 
+  usageCount: Joi.number().integer().min(0).optional(),
 });
 
 const validateApplyCoupon = Joi.object({
   couponCode: Joi.string().required().messages({
+    'any.required': 'Coupon code is required.',
+    'string.base': 'Coupon code must be a string.',
+  }),
+  currencyCode: Joi.string().required().messages({
     'any.required': 'Coupon code is required.',
     'string.base': 'Coupon code must be a string.',
   }),
@@ -346,9 +350,9 @@ const validateApplyCoupon = Joi.object({
     'string.base': 'Homestay ID must be a string.',
   }),
   numberOfDays: Joi.number().integer().min(1).required().messages({
-      'any.required': 'Number of days is required.',
-      'number.base': 'Number of days must be a number.',
-      'number.min': 'Number of days must be at least 1.',
+    'any.required': 'Number of days is required.',
+    'number.base': 'Number of days must be a number.',
+    'number.min': 'Number of days must be at least 1.',
   }),
 });
 
