@@ -1343,7 +1343,49 @@ const reorderImages = async (req, res) => {
   }
 };
 
+const sendCheckInReminders = async () => {
+  try {
+    console.log('Cron job started...');
 
+    const now = new Date();
+    const tomorrow = new Date(now.setDate(now.getDate() + 1));
+
+    const startOfDayUTC = new Date(tomorrow.setHours(0, 0, 0, 0));
+    const endOfDayUTC = new Date(tomorrow.setHours(23, 59, 59, 999));
+
+    console.log(`Start of day (UTC): ${startOfDayUTC}`);
+    console.log(`End of day (UTC): ${endOfDayUTC}`);
+
+    // Fetch bookings for the next day
+    const bookings = await Booking.find({
+      checkIn: { $gte: startOfDayUTC, $lt: endOfDayUTC },
+      isCancelled: false,
+    })
+      .populate('userId')
+      .populate('homestayId');
+
+    console.log(bookings);
+
+
+    if (bookings.length === 0) {
+      console.log('No bookings found for tomorrow.');
+      return;
+    }
+
+    // Send emails for each booking
+    // for (const booking of bookings) {
+    //   if (booking.userId && booking.userId.email) {
+    //     await sendEmail(booking.userId.email, booking);
+    //   } else {
+    //     console.warn(`No email found for user of booking ${booking._id}`);
+    //   }
+    // }
+
+    console.log('Cron job completed successfully.');
+  } catch (error) {
+    console.error('Error in cron job:', error);
+  }
+};
 
 module.exports = {
   adminSignUp,
@@ -1372,5 +1414,6 @@ module.exports = {
   toggleCouponStatus,
   getAllCoupons,
   getAllBookings,
-  reorderImages
+  reorderImages,
+  sendCheckInReminders
 };

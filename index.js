@@ -1,6 +1,7 @@
 // express config
 const express = require("express");
 const app = express();
+const cron = require('node-cron');
 
 // dot env config
 require("dotenv").config();
@@ -33,12 +34,20 @@ app.get("/", (req, res) => {
 
 const adminRoutes = require("./routes/adminRoute");
 const userRoutes = require("./routes/userRoute");
+const { sendCheckInReminders } = require("./controllers/adminController");
 
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes)
 
-// establishing connection to database
+
+
+// cron.schedule('*/1 * * * *', async () => {
+//   console.log('Cron job started...');
+//   await sendCheckInReminders()
+// });
+
+
 
 const connect = async () => {
   try {
