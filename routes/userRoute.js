@@ -25,6 +25,7 @@ const {
   checkFutureBooking,
   submitReview,
   getReviewsByHomestay,
+  generateReceipt,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -63,6 +64,8 @@ router.get("/get-latestcoupon", getLatestValidCoupon);
 
 router.post("/submit-review", authenticateToken, isUser, submitReview);
 router.get("/test/:homeStayId", getReviewsByHomestay);
+
+router.get("/download-receipt/:bookingId", authenticateToken, isUser, generateReceipt);
 
 
 module.exports = router;

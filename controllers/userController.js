@@ -3,6 +3,7 @@ const User = require("../models/user");
 const Homestay = require("../models/homestays");
 const Category = require("../models/category");
 const Coupon = require("../models/coupon");
+const PDFDocument = require('pdfkit');
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
 const { getToken } = require("../utils/jwtHelper");
@@ -23,6 +24,10 @@ const Review = require("../models/review");
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
 const { razorpay } = require("../utils/razorpay");
+
+const { generateHeader } = require("../utils/receiptUtils/headerUtils");
+const { generateBookingDetails } = require("../utils/receiptUtils/detailsUtils");
+const { generateFooter } = require("../utils/receiptUtils/footerUtils");
 
 
 const userSignup = async (req, res) => {
@@ -718,10 +723,26 @@ const bookHomestayComplete = async (req, res) => {
 
     await newBooking.save();
 
+    const populatedData = await Booking.findById(newBooking._id)
+    .populate({
+      path: 'homestayId',
+      select: 'title address.city address.state', // Select the 'name' field from Homestay
+    })
+    .populate({
+      path: 'userId',
+      select: 'fullName', // Select the 'fullName' field from User
+    });
+
     return res.status(201).json({
       success: true,
       message: 'Room booking initiated.',
-      data: newBooking
+      data: {
+        ...newBooking.toObject(),
+        homestayName: populatedData?.homestayId?.title || null,
+        userName: populatedData?.userId?.fullName || null,
+        stayCity: populatedData?.homestayId?.address?.city || null,
+        stayState: populatedData?.homestayId?.address?.state || null,
+    }
     });
 
   } catch (error) {
@@ -1226,6 +1247,65 @@ const getReviewsByHomestay = async (req, res) => {
 }
 
 
+//USER - GENERATE RECIEPT AFTER BOOKING - IN SUCCESS PAGE OF UI
+const generateReceipt = async (req, res) => {
+
+  const { bookingId } = req.params;
+  
+  try {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      bufferPages: true
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=receipt.pdf');
+    doc.pipe(res);
+
+    const bookingDetails = await Booking.findById(bookingId)
+    .populate({
+      path: 'homestayId',
+      select: 'title address.city address.state', // Select the 'name' field from Homestay
+    })
+    .populate({
+      path: 'userId',
+      select: 'fullName', // Select the 'fullName' field from User
+    }); 
+
+    const bookingData = [
+      { label: 'Cust. Name', value: `${bookingDetails?.userId?.fullName}` },
+      { label: 'Payment id', value: `${bookingDetails?.paymentId}` },
+      { label: 'Booking Date', value: bookingDetails?.createdAt
+        ? new Date(bookingDetails?.createdAt)?.toDateString()
+        : 'N/A',
+      },
+      { label: 'Stay Details', value: `${bookingDetails?.homestayId?.title}, ${bookingDetails?.homestayId?.address?.city}, ${bookingDetails?.homestayId?.address?.state}` },
+      { label: 'Check-in', value: bookingDetails?.checkIn
+        ? new Date(bookingDetails?.checkIn)?.toDateString()
+        : 'N/A',
+      },
+      { label: 'Check-out', value: bookingDetails?.checkOut
+        ? new Date(bookingDetails?.checkOut)?.toDateString()
+        : 'N/A',
+      },
+      { label: 'Amount Paid', value: `${bookingDetails?.amount}/-` }
+    ];
+
+    // Generate PDF sections
+    let yPosition = generateHeader(doc, bookingDetails?.createdAt);
+    yPosition = generateBookingDetails(doc, yPosition, bookingData);
+    generateFooter(doc);
+
+    doc.end();
+  } catch (error) {
+    console.error('PDF Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+};
+
+
 module.exports = {
   userSignup,
   userOtpVerify,
@@ -1252,4 +1332,5 @@ module.exports = {
   checkFutureBooking,
   submitReview,
   getReviewsByHomestay,
+  generateReceipt
 }
