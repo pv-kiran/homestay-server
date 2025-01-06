@@ -1196,12 +1196,12 @@ const getAllCoupons = async (req, res) => {
       });
     }
 
-    const formattedCoupons = coupons?.map(coupon => ({ 
-      ...coupon?._doc, 
+    const formattedCoupons = coupons?.map(coupon => ({
+      ...coupon?._doc,
       expiryDate: format(new Date(coupon?.expiryDate), 'dd-MM-yyyy'),
       discountValue: coupon.discountType === 'percentage'
-      ? `${coupon.discountValue}%` 
-      : `${coupon.discountValue}/-`,
+        ? `${coupon.discountValue}%`
+        : `${coupon.discountValue}/-`,
     }));
 
     return res.status(200).json({
@@ -1212,16 +1212,12 @@ const getAllCoupons = async (req, res) => {
       currentPage: pageNumber,
       pageSize: pagePerData
     })
-  }catch (error) {
+  } catch (error) {
     console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons"})
-    console.error("Error retrieving bookings:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving bookings",
-    });
+      message: "An error occurred while retrieving coupons"
+    })
   }
 }
 
@@ -1300,7 +1296,8 @@ const getAllBookings = async (req, res) => {
     console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons"})
+      message: "An error occurred while retrieving coupons"
+    })
     console.error("Error retrieving bookings:", error);
     return res.status(500).json({
       success: false,
