@@ -71,7 +71,7 @@ const validateAmenity = Joi.object({
     "string.max": "Amenity name should have a maximum length of 30",
     "any.required": "Amenity name is required",
   }),
-  description: Joi.string().min(3).max(10).required().messages({
+  description: Joi.string().min(3).max(30).required().messages({
     "string.base": "Description should be a string",
     "string.empty": "Description cannot be empty",
     "string.min": "Description should have a minimum length of 5",
