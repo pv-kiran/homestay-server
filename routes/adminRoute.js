@@ -29,7 +29,12 @@ const {
   toggleCouponStatus,
   getAllCoupons,
   getAllBookings,
-  reorderImages
+  reorderImages,
+  getMonthlyReport,
+  getHomeStaywiseReport,
+  getCategoryWiseReport,
+  getYearlyReport,
+  getOverallReport
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -78,11 +83,16 @@ router.put("/toggle-user/:userId", toggleUserStatus);
 router.post("/get-allbookings", getAllBookings);
 router.put("/homestay/:id/images", reorderImages);
 
-router.post("/add-coupon",createCoupon);
-router.put("/update-coupon/:id",updateCoupon);
+router.post("/add-coupon", createCoupon);
+router.put("/update-coupon/:id", updateCoupon);
 router.put("/toggle-coupon/:id", toggleCouponStatus);
 router.post("/get-allcoupons", getAllCoupons);
 
+router.get("/month/report", getMonthlyReport);
+router.get("/yearly/report", getYearlyReport);
+router.get("/homestay/report", getHomeStaywiseReport);
+router.get("/category/report", getCategoryWiseReport);
+router.get("/overall/report", getOverallReport);
 
 
 module.exports = router;
