@@ -102,6 +102,10 @@ const validateHomestay = Joi.object({
       "any.required": "City is required.",
       "string.empty": "City cannot be empty",
     }),
+    proximityCity: Joi.string().required().messages({
+      "any.required": "City is required.",
+      "string.empty": "City cannot be empty",
+    }),
     district: Joi.string().required().messages({
       "any.required": "District is required.",
       "string.empty": "District cannot be empty",
@@ -203,6 +207,22 @@ const validateHomestay = Joi.object({
       "any.required": "Category is required.",
       "string.empty": "Category is required.",
     }),
+  insuranceAmount: Joi.number().integer().required().messages({
+    "number.base": "Insurance amount must be a number.",
+    "any.required": "Insurance amount is required.",
+  }),
+  provider: Joi.string().required().messages({
+    "any.required": "Insurance provider is required.",
+    "string.base": "Insurance provider should be a string",
+    "string.empty": "Insurance provider cannot be empty",
+    "string.min": "Insurance provider should have a minimum length of 3",
+  }),
+  insuranceDescription: Joi.string().required().messages({
+    "any.required": "Insurance Description is required.",
+    "string.base": "Insurance Description should be a string",
+    "string.empty": "Insurance Description cannot be empty",
+    "string.min": "Insurance Description should have a minimum length of 3",
+  }),
 });
 
 const validateUserSignup = Joi.object({

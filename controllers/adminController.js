@@ -596,7 +596,6 @@ const addHomestay = async (req, res) => {
 //ADMIN - UPDATE HOMESTAY
 const updateHomestay = async (req, res) => {
   try {
-    console.log(req.body)
     const { error } = validateHomestay.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
@@ -1298,11 +1297,6 @@ const getAllBookings = async (req, res) => {
       success: false,
       message: "An error occurred while retrieving coupons"
     })
-    console.error("Error retrieving bookings:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving bookings",
-    });
   }
 };
 

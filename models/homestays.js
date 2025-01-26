@@ -46,6 +46,9 @@ const homestaySchema = new mongoose.Schema({
             type: String,
             required: true,
         },
+        proximityCity: {
+            type: String
+        },
         coordinates: {
             latitude: {
                 type: Number,
@@ -92,6 +95,18 @@ const homestaySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',
         required: true,
+    },
+    provider: {
+        type: String,
+        required: true
+    },
+    insuranceAmount: {
+        type: Number,
+        required: true
+    },
+    insuranceDescription: {
+        type: String,
+        required: true
     },
     createdAt: {
         type: Date,
