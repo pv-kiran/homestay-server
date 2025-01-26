@@ -746,14 +746,14 @@ const bookHomestayComplete = async (req, res) => {
     await newBooking.save();
 
     const populatedData = await Booking.findById(newBooking._id)
-    .populate({
-      path: 'homestayId',
-      select: 'title address.city address.state', // Select the 'name' field from Homestay
-    })
-    .populate({
-      path: 'userId',
-      select: 'fullName', // Select the 'fullName' field from User
-    });
+      .populate({
+        path: 'homestayId',
+        select: 'title address.city address.state', // Select the 'name' field from Homestay
+      })
+      .populate({
+        path: 'userId',
+        select: 'fullName', // Select the 'fullName' field from User
+      });
 
     return res.status(201).json({
       success: true,
@@ -764,7 +764,7 @@ const bookHomestayComplete = async (req, res) => {
         userName: populatedData?.userId?.fullName || null,
         stayCity: populatedData?.homestayId?.address?.city || null,
         stayState: populatedData?.homestayId?.address?.state || null,
-    }
+      }
     });
 
   } catch (error) {
@@ -891,8 +891,11 @@ const getValidCoupons = async (req, res) => {
       isActive: true, // Ensure coupon is active
     });
 
+    const { currency } = req.query;
+    console.log(currency);
+
     // Filter coupons based on usageLimit, usageCount, and userRestrictions
-    const filteredCoupons = coupons.filter((coupon) => {
+    let filteredCoupons = coupons.filter((coupon) => {
       // Check if the coupon has a usage limit and if the limit is reached
       if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
         return false;
@@ -904,6 +907,30 @@ const getValidCoupons = async (req, res) => {
       }
       return true; // Include the coupon if all conditions are satisfied
     });
+
+    let conversionRate = 1;
+    if (currency && currency !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+        conversionRate = data?.conversion_rate;
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+
+    console.log(conversionRate)
+
+    filteredCoupons = filteredCoupons.map(coupon => ({
+      ...coupon.toObject(),
+      discountValue: coupon.discountType === 'fixed'
+        ? Number((coupon.discountValue * conversionRate).toFixed(2))
+        : coupon.discountValue,
+      maxDiscount: coupon.maxDiscount
+        ? Number((coupon.maxDiscount * conversionRate).toFixed(2))
+        : null
+    }));
+
+
 
     res.status(200).json({
       success: true,
@@ -917,8 +944,12 @@ const getValidCoupons = async (req, res) => {
     });
   }
 }
-const getUserBookings = async (req, res) => {
 
+
+
+
+const getUserBookings = async (req, res) => {
+  const { currency } = req.query;
   try {
     // Fetch bookings for the given user and populate homestay details
     const bookings = await Booking.find({ userId: req.userId })
@@ -932,13 +963,23 @@ const getUserBookings = async (req, res) => {
       return res.status(404).json({ message: 'No bookings found for this user' });
     }
 
+    let conversionRate = 1;
+    if (currency && currency !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+        conversionRate = data?.conversion_rate;
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+
     // Transform bookings into desired format
     const bookingDetails = bookings.map(booking => ({
       _id: booking?._id,
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       paymentId: booking.paymentId,
-      amount: booking.amount,
+      amount: Math.round(booking.amount * conversionRate),
       createdAt: booking.createdAt,
       homestayName: booking.homestayId?.title || 'Unknown Homestay',
       homestayImage: booking.homestayId?.images?.[0] || null,
@@ -1302,7 +1343,7 @@ const getReviewsByHomestay = async (req, res) => {
 const generateReceipt = async (req, res) => {
 
   const { bookingId } = req.params;
-  
+
   try {
     const doc = new PDFDocument({
       size: 'A4',
@@ -1316,30 +1357,33 @@ const generateReceipt = async (req, res) => {
     doc.pipe(res);
 
     const bookingDetails = await Booking.findById(bookingId)
-    .populate({
-      path: 'homestayId',
-      select: 'title address.city address.state', // Select the 'name' field from Homestay
-    })
-    .populate({
-      path: 'userId',
-      select: 'fullName', // Select the 'fullName' field from User
-    }); 
+      .populate({
+        path: 'homestayId',
+        select: 'title address.city address.state', // Select the 'name' field from Homestay
+      })
+      .populate({
+        path: 'userId',
+        select: 'fullName', // Select the 'fullName' field from User
+      });
 
     const bookingData = [
       { label: 'Cust. Name', value: `${bookingDetails?.userId?.fullName}` },
       { label: 'Payment id', value: `${bookingDetails?.paymentId}` },
-      { label: 'Booking Date', value: bookingDetails?.createdAt
-        ? new Date(bookingDetails?.createdAt)?.toDateString()
-        : 'N/A',
+      {
+        label: 'Booking Date', value: bookingDetails?.createdAt
+          ? new Date(bookingDetails?.createdAt)?.toDateString()
+          : 'N/A',
       },
       { label: 'Stay Details', value: `${bookingDetails?.homestayId?.title}, ${bookingDetails?.homestayId?.address?.city}, ${bookingDetails?.homestayId?.address?.state}` },
-      { label: 'Check-in', value: bookingDetails?.checkIn
-        ? new Date(bookingDetails?.checkIn)?.toDateString()
-        : 'N/A',
+      {
+        label: 'Check-in', value: bookingDetails?.checkIn
+          ? new Date(bookingDetails?.checkIn)?.toDateString()
+          : 'N/A',
       },
-      { label: 'Check-out', value: bookingDetails?.checkOut
-        ? new Date(bookingDetails?.checkOut)?.toDateString()
-        : 'N/A',
+      {
+        label: 'Check-out', value: bookingDetails?.checkOut
+          ? new Date(bookingDetails?.checkOut)?.toDateString()
+          : 'N/A',
       },
       { label: 'Amount Paid', value: `${bookingDetails?.amount}/-` }
     ];

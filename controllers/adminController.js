@@ -596,7 +596,6 @@ const addHomestay = async (req, res) => {
 //ADMIN - UPDATE HOMESTAY
 const updateHomestay = async (req, res) => {
   try {
-    console.log(req.body)
     const { error } = validateHomestay.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
@@ -1196,12 +1195,12 @@ const getAllCoupons = async (req, res) => {
       });
     }
 
-    const formattedCoupons = coupons?.map(coupon => ({ 
-      ...coupon?._doc, 
+    const formattedCoupons = coupons?.map(coupon => ({
+      ...coupon?._doc,
       expiryDate: format(new Date(coupon?.expiryDate), 'dd-MM-yyyy'),
       discountValue: coupon.discountType === 'percentage'
-      ? `${coupon.discountValue}%` 
-      : `${coupon.discountValue}/-`,
+        ? `${coupon.discountValue}%`
+        : `${coupon.discountValue}/-`,
     }));
 
     return res.status(200).json({
@@ -1212,16 +1211,12 @@ const getAllCoupons = async (req, res) => {
       currentPage: pageNumber,
       pageSize: pagePerData
     })
-  }catch (error) {
+  } catch (error) {
     console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons"})
-    console.error("Error retrieving bookings:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving bookings",
-    });
+      message: "An error occurred while retrieving coupons"
+    })
   }
 }
 
@@ -1300,12 +1295,8 @@ const getAllBookings = async (req, res) => {
     console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons"})
-    console.error("Error retrieving bookings:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving bookings",
-    });
+      message: "An error occurred while retrieving coupons"
+    })
   }
 };
 
@@ -1342,6 +1333,201 @@ const reorderImages = async (req, res) => {
     res.status(500).json({ error: 'An error occurred while updating images.' });
   }
 };
+
+const getYearlyReport = async (req, res) => {
+  try {
+    const yearlyData = await Booking.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y", date: "$createdAt" } },
+          totalRevenue: { $sum: "$amount" },
+          totalBookings: { $sum: 1 },
+          cancelledBookings: { $sum: { $cond: [{ $eq: ["$isCancelled", true] }, 1, 0] } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id",
+          totalRevenue: 1,
+          totalBookings: 1,
+          cancelledBookings: 1,
+          successRate: {
+            $multiply: [
+              {
+                $divide: [
+                  { $subtract: ["$totalBookings", "$cancelledBookings"] },
+                  "$totalBookings"
+                ]
+              },
+              100
+            ]
+          }
+        }
+      },
+      { $sort: { year: 1 } }
+    ]);
+
+    res.json(yearlyData);
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: error.message });
+  }
+}
+
+const getMonthlyReport = async (req, res) => {
+  try {
+    // Aggregate bookings by month
+    const monthlyData = await Booking.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%b", date: "$createdAt" } },
+          revenue: { $sum: "$amount" },
+          bookings: { $sum: 1 },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          month: "$_id",
+          revenue: 1,
+          bookings: 1,
+          occupancyRate: { $multiply: [{ $divide: ["$bookings", 40] }, 100] } // Assuming max 40 bookings per month
+        }
+      },
+      { $sort: { month: 1 } }
+    ]);
+
+
+
+    res.json(monthlyData);
+  } catch (error) {
+
+    res.status(500).json({ message: error.message });
+  }
+}
+
+const getHomeStaywiseReport = async (req, res) => {
+  try {
+    // Aggregate bookings grouped by homestay
+    const homestayPerformance = await Booking.aggregate([
+      {
+        $group: {
+          _id: "$homestayId",
+          revenue: { $sum: "$amount" },
+          bookings: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'homestays', // Ensure this matches your collection name
+          localField: '_id',
+          foreignField: '_id',
+          as: 'homestayDetails'
+        }
+      },
+      {
+        $unwind: "$homestayDetails"
+      },
+      {
+        $project: {
+          id: { $toString: "$_id" },
+          name: "$homestayDetails.title",
+          revenue: 1,
+          bookings: 1
+        }
+      }
+    ]);
+
+    res.json(homestayPerformance);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+const getCategoryWiseReport = async (req, res) => {
+  try {
+    // Aggregate bookings grouped by category
+    const categoryPerformance = await Homestay.aggregate([
+      {
+        $lookup: {
+          from: 'bookings', // Ensure this matches your collection name
+          localField: '_id',
+          foreignField: 'homestayId',
+          as: 'bookings'
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories', // Ensure this matches your collection name
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryDetails'
+        }
+      },
+      {
+        $unwind: "$categoryDetails"
+      },
+      {
+        $unwind: "$bookings"
+      },
+      {
+        $group: {
+          _id: "$categoryDetails.categoryName",
+          revenue: { $sum: "$bookings.amount" },
+          bookings: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          category: "$_id",
+          revenue: 1,
+          bookings: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    res.json(categoryPerformance);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+const getOverallReport = async (req, res) => {
+  try {
+    const [totalHomestays, bookingStats] = await Promise.all([
+      Homestay.countDocuments({ isDisabled: false }),
+      Booking.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalBookings: { $sum: 1 },
+            totalRevenue: { $sum: "$amount" }
+          }
+        }
+      ])
+    ]);
+
+    const totalBookings = bookingStats[0]?.totalBookings || 0;
+    const totalRevenue = bookingStats[0]?.totalRevenue || 0;
+
+    // Assuming max capacity is 40 bookings per homestay per month
+    const maxPossibleBookings = totalHomestays * 40 * 12;
+    const occupancyRate = maxPossibleBookings > 0
+      ? ((totalBookings / maxPossibleBookings) * 100).toFixed(2)
+      : 0;
+
+    res.json({
+      totalHomestays,
+      totalBookings,
+      totalRevenue,
+      occupancyRate: parseFloat(occupancyRate)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
 
 const sendCheckInReminders = async () => {
   try {
@@ -1415,5 +1601,10 @@ module.exports = {
   getAllCoupons,
   getAllBookings,
   reorderImages,
-  sendCheckInReminders
+  sendCheckInReminders,
+  getMonthlyReport,
+  getHomeStaywiseReport,
+  getCategoryWiseReport,
+  getYearlyReport,
+  getOverallReport
 };
