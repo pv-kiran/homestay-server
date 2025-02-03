@@ -37,7 +37,10 @@ const {
   getOverallReport,
   addRestaurent,
   getAllRestaurants,
-  updateRestaurant
+  updateRestaurant,
+  addHomelyFood,
+  getAllHomelyFood,
+  updateHomelyFood
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -101,5 +104,9 @@ router.get("/overall/report", getOverallReport);
 router.post("/add-restaurent", addRestaurent);
 router.post("/get-restaurents", getAllRestaurants);
 router.put('/restaurant/:id', updateRestaurant);
+
+router.post("/add-homelyfood", addHomelyFood);
+router.post("/get-homelyfoods", getAllHomelyFood);
+router.put('/homelyfood/:id', updateHomelyFood);
 
 module.exports = router;

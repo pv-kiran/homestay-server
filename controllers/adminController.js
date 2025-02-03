@@ -20,6 +20,7 @@ const {
   validateUpdateCoupon,
   validateCreateCoupon,
   restaurantSchemaValidation,
+  homelyFoodValidation,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -34,6 +35,7 @@ const {
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
 const Restaurant = require("../models/restaurent");
+const HomelyFood = require("../models/homelyFood");
 
 
 //ADMIN SIGNUP
@@ -1529,7 +1531,6 @@ const getOverallReport = async (req, res) => {
   }
 }
 
-
 const addRestaurent = async (req, res) => {
   const { error } = restaurantSchemaValidation.validate(req.body);
   if (error) {
@@ -1539,7 +1540,6 @@ const addRestaurent = async (req, res) => {
   try {
     // Check if the restaurant name already exists
     const existingRestaurant = await Restaurant.findOne({ restaurantName: req?.body?.restaurantName });
-    console.log(existingRestaurant)
     if (existingRestaurant) {
       return res.status(400).json({ error: 'Restaurant with this name already exists' });
     }
@@ -1651,6 +1651,128 @@ const updateRestaurant = async (req, res) => {
   }
 };
 
+
+const addHomelyFood = async (req, res) => {
+  const { error } = homelyFoodValidation.validate(req.body);
+  if (error) {
+    return res.status(400).json({ error: error.details.map(detail => detail.message) });
+  }
+
+  try {
+    // Check if the restaurant name already exists
+    const existingHomelyFood = await HomelyFood.findOne({ homelyFoodCenterName: req?.body?.homelyFoodCenterName });
+    console.log(existingHomelyFood)
+    if (existingHomelyFood) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+
+    // Create new restaurant instance and save
+    const newHomelyFood = new HomelyFood(req.body);
+    await newHomelyFood.save();
+    res.status(201).json({ message: 'Restaurant added successfully', homelyFoodCenter: newHomelyFood });
+
+  } catch (err) {
+    // Handling duplicate key error from MongoDB unique index
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+    res.status(500).json({ error: 'Error adding restaurant', details: err.message });
+  }
+}
+
+const getAllHomelyFood = async (req, res) => {
+  try {
+    // Destructure request body with default values
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    // Search query for restaurant name or city
+    const searchQuery = searchParams
+      ? {
+        $or: [
+          { homelyFoodCenterName: { $regex: searchParams, $options: "i" } },
+          { city: { $regex: searchParams, $options: "i" } }
+        ]
+      }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // Count total restaurants matching search criteria
+    const totalHomelyFoodCenter = await HomelyFood.countDocuments(searchQuery);
+
+    // Retrieve paginated list of restaurants
+    const homelyFood = await HomelyFood.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
+
+    // Handle no data found scenario
+    if (!homelyFood.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No homelyFood found",
+      });
+    }
+
+    // Respond with paginated restaurant data
+    return res.status(200).json({
+      success: true,
+      data: homelyFood,
+      totalHomelyFoodCenter,
+      totalPages: Math.ceil(totalHomelyFoodCenter / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData,
+    });
+  } catch (error) {
+    console.error("Error retrieving homelyFood:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving homelyFood",
+    });
+  }
+};
+
+const updateHomelyFood = async (req, res) => {
+  const { id } = req.params; // Assuming you're passing the restaurant ID in the URL
+  const { error } = homelyFoodValidation.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({ error: error.details.map(detail => detail.message) });
+  }
+
+  try {
+    // Check if the restaurant exists
+    const existingHomelyFood = await HomelyFood.findById(id);
+    if (!existingHomelyFood) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Check if the updated name already exists for another restaurant
+    if (req.body.homelyFoodCenterName) {
+      const duplicateRestaurant = await HomelyFood.findOne({
+        homelyFoodCenterName: req.body.homelyFoodCenterName,
+        _id: { $ne: id }, // Exclude the current restaurant from the search
+      });
+      if (duplicateRestaurant) {
+        return res.status(400).json({ error: 'Homely food with this name already exists' });
+      }
+    }
+
+    // Update restaurant details
+    Object.assign(existingHomelyFood, req.body); // Merge updates into the existing restaurant
+    await existingHomelyFood.save();
+
+    res.status(200).json({ message: 'Restaurant updated successfully', restaurant: existingHomelyFood });
+
+  } catch (err) {
+    // Handling duplicate key error from MongoDB unique index
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+    res.status(500).json({ error: 'Error updating restaurant', details: err.message });
+  }
+};
+
 const sendCheckInReminders = async () => {
   try {
     console.log('Cron job started...');
@@ -1731,5 +1853,8 @@ module.exports = {
   getOverallReport,
   addRestaurent,
   getAllRestaurants,
-  updateRestaurant
+  updateRestaurant,
+  addHomelyFood,
+  updateHomelyFood,
+  getAllHomelyFood
 };

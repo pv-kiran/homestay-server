@@ -412,6 +412,19 @@ const restaurantSchemaValidation = Joi.object({
 });
 
 
+const homelyFoodValidation = Joi.object({
+  homelyFoodCenterName: Joi.string().trim().required(),
+  menuItems: Joi.array().items(
+    Joi.object({
+      _id: Joi.string().optional(),
+      type: Joi.string().valid('breakfast', 'lunch', 'dinner').required(),
+      name: Joi.string().trim().required(),
+      price: Joi.number().min(0).required()
+    })
+  ).required(),
+  city: Joi.string().trim().required(),
+});
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -429,5 +442,6 @@ module.exports = {
   validateUpdateCoupon,
   validateApplyCoupon,
   validateSubmitReview,
-  restaurantSchemaValidation
+  restaurantSchemaValidation,
+  homelyFoodValidation
 };
