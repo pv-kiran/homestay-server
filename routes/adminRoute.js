@@ -34,7 +34,10 @@ const {
   getHomeStaywiseReport,
   getCategoryWiseReport,
   getYearlyReport,
-  getOverallReport
+  getOverallReport,
+  addRestaurent,
+  getAllRestaurants,
+  updateRestaurant
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -94,5 +97,9 @@ router.get("/homestay/report", getHomeStaywiseReport);
 router.get("/category/report", getCategoryWiseReport);
 router.get("/overall/report", getOverallReport);
 
+
+router.post("/add-restaurent", addRestaurent);
+router.post("/get-restaurents", getAllRestaurants);
+router.put('/restaurant/:id', updateRestaurant);
 
 module.exports = router;

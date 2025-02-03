@@ -19,6 +19,7 @@ const {
   validateUserId,
   validateUpdateCoupon,
   validateCreateCoupon,
+  restaurantSchemaValidation,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -32,6 +33,7 @@ const {
 } = require("../templates/otpEmailTemplate");
 const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
+const Restaurant = require("../models/restaurent");
 
 
 //ADMIN SIGNUP
@@ -1221,8 +1223,6 @@ const getAllCoupons = async (req, res) => {
 }
 
 
-
-
 const getAllBookings = async (req, res) => {
   try {
     const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
@@ -1529,6 +1529,128 @@ const getOverallReport = async (req, res) => {
   }
 }
 
+
+const addRestaurent = async (req, res) => {
+  const { error } = restaurantSchemaValidation.validate(req.body);
+  if (error) {
+    return res.status(400).json({ error: error.details.map(detail => detail.message) });
+  }
+
+  try {
+    // Check if the restaurant name already exists
+    const existingRestaurant = await Restaurant.findOne({ restaurantName: req?.body?.restaurantName });
+    console.log(existingRestaurant)
+    if (existingRestaurant) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+
+    // Create new restaurant instance and save
+    const newRestaurant = new Restaurant(req.body);
+    await newRestaurant.save();
+    res.status(201).json({ message: 'Restaurant added successfully', restaurant: newRestaurant });
+
+  } catch (err) {
+    // Handling duplicate key error from MongoDB unique index
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+    res.status(500).json({ error: 'Error adding restaurant', details: err.message });
+  }
+}
+
+const getAllRestaurants = async (req, res) => {
+  try {
+    // Destructure request body with default values
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    // Search query for restaurant name or city
+    const searchQuery = searchParams
+      ? {
+        $or: [
+          { restaurantName: { $regex: searchParams, $options: "i" } },
+          { city: { $regex: searchParams, $options: "i" } }
+        ]
+      }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // Count total restaurants matching search criteria
+    const totalRestaurants = await Restaurant.countDocuments(searchQuery);
+
+    // Retrieve paginated list of restaurants
+    const restaurants = await Restaurant.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1 });
+
+    // Handle no data found scenario
+    if (!restaurants.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No restaurants found",
+      });
+    }
+
+    // Respond with paginated restaurant data
+    return res.status(200).json({
+      success: true,
+      data: restaurants,
+      totalRestaurants,
+      totalPages: Math.ceil(totalRestaurants / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData,
+    });
+  } catch (error) {
+    console.error("Error retrieving restaurants:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving restaurants",
+    });
+  }
+};
+
+const updateRestaurant = async (req, res) => {
+  const { id } = req.params; // Assuming you're passing the restaurant ID in the URL
+  const { error } = restaurantSchemaValidation.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({ error: error.details.map(detail => detail.message) });
+  }
+
+  try {
+    // Check if the restaurant exists
+    const existingRestaurant = await Restaurant.findById(id);
+    if (!existingRestaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Check if the updated name already exists for another restaurant
+    if (req.body.restaurantName) {
+      const duplicateRestaurant = await Restaurant.findOne({
+        name: req.body.restaurantName,
+        _id: { $ne: id }, // Exclude the current restaurant from the search
+      });
+      if (duplicateRestaurant) {
+        return res.status(400).json({ error: 'Restaurant with this name already exists' });
+      }
+    }
+
+    // Update restaurant details
+    Object.assign(existingRestaurant, req.body); // Merge updates into the existing restaurant
+    await existingRestaurant.save();
+
+    res.status(200).json({ message: 'Restaurant updated successfully', restaurant: existingRestaurant });
+
+  } catch (err) {
+    // Handling duplicate key error from MongoDB unique index
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+    }
+    res.status(500).json({ error: 'Error updating restaurant', details: err.message });
+  }
+};
+
 const sendCheckInReminders = async () => {
   try {
     console.log('Cron job started...');
@@ -1606,5 +1728,8 @@ module.exports = {
   getHomeStaywiseReport,
   getCategoryWiseReport,
   getYearlyReport,
-  getOverallReport
+  getOverallReport,
+  addRestaurent,
+  getAllRestaurants,
+  updateRestaurant
 };
