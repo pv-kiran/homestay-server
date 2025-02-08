@@ -34,7 +34,25 @@ const {
   getHomeStaywiseReport,
   getCategoryWiseReport,
   getYearlyReport,
-  getOverallReport
+  getOverallReport,
+  addRestaurent,
+  getAllRestaurants,
+  updateRestaurant,
+  addHomelyFood,
+  getAllHomelyFood,
+  updateHomelyFood,
+  addRoomService,
+  getRoomServices,
+  updateRoomService,
+  addRides,
+  getRides,
+  updateRides,
+  addEntertainment,
+  getEntertainment,
+  updateEntertainment,
+  addOtherService,
+  getOtherService,
+  updateOtherService
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -94,5 +112,31 @@ router.get("/homestay/report", getHomeStaywiseReport);
 router.get("/category/report", getCategoryWiseReport);
 router.get("/overall/report", getOverallReport);
 
+
+router.post("/add-restaurent", addRestaurent);
+router.post("/get-restaurents", getAllRestaurants);
+router.put('/restaurant/:id', updateRestaurant);
+
+router.post("/add-homelyfood", addHomelyFood);
+router.post("/get-homelyfoods", getAllHomelyFood);
+router.put('/homelyfood/:id', updateHomelyFood);
+
+
+router.post("/add-roomservice", addRoomService);
+router.post("/get-roomservice", getRoomServices);
+router.put('/roomservice/:id', updateRoomService);
+
+router.post("/add-rides", addRides);
+router.post("/get-rides", getRides);
+router.put('/ride/:id', updateRides);
+
+
+router.post("/add-entertainment", addEntertainment);
+router.post("/get-entertainment", getEntertainment);
+router.put('/entertainment/:id', updateEntertainment);
+
+router.post("/add-otherservice", addOtherService);
+router.post("/get-otherservice", getOtherService);
+router.put('/otherservice/:id', updateOtherService);
 
 module.exports = router;
