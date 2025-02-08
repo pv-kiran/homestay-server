@@ -5,6 +5,9 @@ const Homestay = require("../models/homestays");
 const User = require("../models/user");
 const Coupon = require("../models/coupon");
 const Booking = require("../models/booking");
+const RoomService = require("../models/roomService");
+const Entertainment = require("../models/entertainment");
+const OtherService = require("../models/otherService");
 const { transporter } = require("../utils/emailHelper");
 const { format } = require('date-fns');
 const {
@@ -21,6 +24,7 @@ const {
   validateCreateCoupon,
   restaurantSchemaValidation,
   homelyFoodValidation,
+  validateRoomService,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -36,6 +40,7 @@ const { cloudinary } = require("../utils/cloudinaryHelper");
 const { upload } = require("../utils/multerHelper");
 const Restaurant = require("../models/restaurent");
 const HomelyFood = require("../models/homelyFood");
+const Rides = require("../models/rides");
 
 
 //ADMIN SIGNUP
@@ -1628,7 +1633,7 @@ const updateRestaurant = async (req, res) => {
     // Check if the updated name already exists for another restaurant
     if (req.body.restaurantName) {
       const duplicateRestaurant = await Restaurant.findOne({
-        name: req.body.restaurantName,
+        restaurantName: req.body.restaurantName,
         _id: { $ne: id }, // Exclude the current restaurant from the search
       });
       if (duplicateRestaurant) {
@@ -1773,6 +1778,514 @@ const updateHomelyFood = async (req, res) => {
   }
 };
 
+
+const addRoomService = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    const existingRoomService = await RoomService.findOne({
+      serviceTitle: req.body.serviceName,
+    });
+    if (existingRoomService) {
+      return res
+        .status(400)
+        .json({ message: "Service with this name already exists" });
+    }
+
+    const newRoomService = new RoomService({
+      serviceTitle: req.body.serviceName,
+      description: req.body.description,
+      amount: req.body.amount,
+    });
+
+    await newRoomService.save();
+    res.status(201).json({
+      success: true,
+      message: "Room service created successfully",
+      roomService: newRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+const updateRoomService = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { id } = req.params;
+
+    // Check if a amenity with the same name exists (excluding the current amenity)
+    const existingAmenity = await RoomService.findOne({
+      serviceTitle: req.body.serviceName,
+      _id: { $ne: id },
+    });
+
+    if (existingAmenity) {
+      return res
+        .status(400)
+        .json({ message: "Room service with this name already exists" });
+    }
+
+    // Update the amenity
+    const updatedRoomService = await RoomService.findByIdAndUpdate(
+      id,
+      {
+        serviceTitle: req.body.serviceName,
+        description: req.body.description,
+        amount: req.body.amount,
+      },
+      { new: true }
+    );
+
+    if (!updatedRoomService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Amenity updated successfully",
+      service: updatedRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Internal server error" });
+  }
+
+};
+
+const getRoomServices = async (req, res) => {
+  try {
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { serviceTitle: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalServices = await RoomService.countDocuments(searchQuery);
+
+    const services = await RoomService.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1, _id: 1 });
+
+    if (!services.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No service found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+      totalServices,
+      totalPages: Math.ceil(totalServices / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
+    });
+  } catch (error) {
+    console.error("Error retrieving room service:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving services"
+    });
+  }
+};
+
+
+const addRides = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    const existingRoomService = await Rides.findOne({
+      serviceTitle: req.body.serviceName,
+    });
+    if (existingRoomService) {
+      return res
+        .status(400)
+        .json({ message: "Service with this name already exists" });
+    }
+
+    const newRoomService = new Rides({
+      serviceTitle: req.body.serviceName,
+      description: req.body.description,
+      amount: req.body.amount,
+    });
+
+    await newRoomService.save();
+    res.status(201).json({
+      success: true,
+      message: "Room service created successfully",
+      roomService: newRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const updateRides = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { id } = req.params;
+
+    // Check if a amenity with the same name exists (excluding the current amenity)
+    const existingAmenity = await Rides.findOne({
+      serviceTitle: req.body.serviceName,
+      _id: { $ne: id },
+    });
+    if (existingAmenity) {
+      return res
+        .status(400)
+        .json({ message: "Room service with this name already exists" });
+    }
+
+    // Update the amenity
+    const updatedRoomService = await Rides.findByIdAndUpdate(
+      id,
+      {
+        serviceTitle: req.body.serviceName,
+        description: req.body.description,
+        amount: req.body.amount,
+      },
+      { new: true }
+    );
+
+    if (!updatedRoomService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Amenity updated successfully",
+      service: updatedRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Internal server error" });
+  }
+
+};
+
+const getRides = async (req, res) => {
+  try {
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { serviceTitle: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalServices = await Rides.countDocuments(searchQuery);
+
+    const services = await Rides.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1, _id: 1 });
+
+    if (!services.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No service found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+      totalServices,
+      totalPages: Math.ceil(totalServices / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
+    });
+  } catch (error) {
+    console.error("Error retrieving room service:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving services"
+    });
+  }
+};
+
+
+const addEntertainment = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    const existingRoomService = await Entertainment.findOne({
+      serviceTitle: req.body.serviceName,
+    });
+    if (existingRoomService) {
+      return res
+        .status(400)
+        .json({ message: "Service with this name already exists" });
+    }
+
+    const newRoomService = new Entertainment({
+      serviceTitle: req.body.serviceName,
+      description: req.body.description,
+      amount: req.body.amount,
+    });
+
+    await newRoomService.save();
+    res.status(201).json({
+      success: true,
+      message: "Room service created successfully",
+      roomService: newRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const updateEntertainment = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { id } = req.params;
+
+
+
+    // Check if a amenity with the same name exists (excluding the current amenity)
+    const existingAmenity = await Entertainment.findOne({
+      serviceTitle: req.body.serviceName,
+      _id: { $ne: id },
+    });
+
+
+
+    if (existingAmenity) {
+      return res
+        .status(400)
+        .json({ message: "Room service with this name already exists" });
+    }
+
+    // Update the amenity
+    const updatedRoomService = await Entertainment.findByIdAndUpdate(
+      id,
+      {
+        serviceTitle: req.body.serviceName,
+        description: req.body.description,
+        amount: req.body.amount,
+      },
+      { new: true }
+    );
+
+    if (!updatedRoomService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Amenity updated successfully",
+      service: updatedRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Internal server error" });
+  }
+
+};
+
+const getEntertainment = async (req, res) => {
+  try {
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { serviceTitle: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalServices = await Entertainment.countDocuments(searchQuery);
+
+    const services = await Entertainment.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1, _id: 1 });
+
+    if (!services.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No service found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+      totalServices,
+      totalPages: Math.ceil(totalServices / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
+    });
+  } catch (error) {
+    console.error("Error retrieving room service:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving services"
+    });
+  }
+};
+
+const addOtherService = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    const existingRoomService = await OtherService.findOne({
+      serviceTitle: req.body.serviceName,
+    });
+    if (existingRoomService) {
+      return res
+        .status(400)
+        .json({ message: "Service with this name already exists" });
+    }
+
+    const newRoomService = new OtherService({
+      serviceTitle: req.body.serviceName,
+      description: req.body.description,
+      amount: req.body.amount,
+    });
+
+    await newRoomService.save();
+    res.status(201).json({
+      success: true,
+      message: "Room service created successfully",
+      roomService: newRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const updateOtherService = async (req, res) => {
+  try {
+    const { error } = validateRoomService.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { id } = req.params;
+
+
+
+    // Check if a amenity with the same name exists (excluding the current amenity)
+    const existingAmenity = await OtherService.findOne({
+      serviceTitle: req.body.serviceName,
+      _id: { $ne: id },
+    });
+
+
+
+    if (existingAmenity) {
+      return res
+        .status(400)
+        .json({ message: "Room service with this name already exists" });
+    }
+
+    // Update the amenity
+    const updatedRoomService = await OtherService.findByIdAndUpdate(
+      id,
+      {
+        serviceTitle: req.body.serviceName,
+        description: req.body.description,
+        amount: req.body.amount,
+      },
+      { new: true }
+    );
+
+    if (!updatedRoomService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Amenity updated successfully",
+      service: updatedRoomService,
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Internal server error" });
+  }
+
+};
+
+const getOtherService = async (req, res) => {
+  try {
+    const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
+
+    const searchQuery = searchParams
+      ? { serviceTitle: { $regex: searchParams, $options: "i" } }
+      : {};
+
+    const skip = (pageNumber - 1) * pagePerData;
+
+    const totalServices = await OtherService.countDocuments(searchQuery);
+
+    const services = await OtherService.find(searchQuery)
+      .skip(skip)
+      .limit(parseInt(pagePerData))
+      .sort({ createdAt: -1, _id: 1 });
+
+    if (!services.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No service found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+      totalServices,
+      totalPages: Math.ceil(totalServices / pagePerData),
+      currentPage: pageNumber,
+      pageSize: pagePerData
+    });
+  } catch (error) {
+    console.error("Error retrieving room service:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving services"
+    });
+  }
+};
+
+
 const sendCheckInReminders = async () => {
   try {
     console.log('Cron job started...');
@@ -1856,5 +2369,17 @@ module.exports = {
   updateRestaurant,
   addHomelyFood,
   updateHomelyFood,
-  getAllHomelyFood
+  getAllHomelyFood,
+  addRoomService,
+  updateRoomService,
+  getRoomServices,
+  addRides,
+  getRides,
+  updateRides,
+  addEntertainment,
+  updateEntertainment,
+  getEntertainment,
+  addOtherService,
+  updateOtherService,
+  getOtherService
 };

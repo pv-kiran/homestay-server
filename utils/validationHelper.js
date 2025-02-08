@@ -425,6 +425,27 @@ const homelyFoodValidation = Joi.object({
   city: Joi.string().trim().required(),
 });
 
+const validateRoomService = Joi.object({
+  serviceName: Joi.string().min(3).max(30).required().messages({
+    "string.base": "Service name should be a string",
+    "string.empty": "Service name cannot be empty",
+    "string.min": "Service name should have a minimum length of 3",
+    "string.max": "Service name should have a maximum length of 30",
+    "any.required": "Service name is required",
+  }),
+  description: Joi.string().min(3).max(30).required().messages({
+    "string.base": "Description should be a string",
+    "string.empty": "Description cannot be empty",
+    "string.min": "Description should have a minimum length of 5",
+    "string.max": "Description should have a maximum length of 10",
+    "any.required": "Description is required",
+  }),
+  amount: Joi.number().integer().required().messages({
+    "number.base": "Insurance amount must be a number.",
+    "any.required": "Insurance amount is required.",
+  }),
+});
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -443,5 +464,6 @@ module.exports = {
   validateApplyCoupon,
   validateSubmitReview,
   restaurantSchemaValidation,
-  homelyFoodValidation
+  homelyFoodValidation,
+  validateRoomService
 };

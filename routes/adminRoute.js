@@ -40,7 +40,19 @@ const {
   updateRestaurant,
   addHomelyFood,
   getAllHomelyFood,
-  updateHomelyFood
+  updateHomelyFood,
+  addRoomService,
+  getRoomServices,
+  updateRoomService,
+  addRides,
+  getRides,
+  updateRides,
+  addEntertainment,
+  getEntertainment,
+  updateEntertainment,
+  addOtherService,
+  getOtherService,
+  updateOtherService
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -108,5 +120,23 @@ router.put('/restaurant/:id', updateRestaurant);
 router.post("/add-homelyfood", addHomelyFood);
 router.post("/get-homelyfoods", getAllHomelyFood);
 router.put('/homelyfood/:id', updateHomelyFood);
+
+
+router.post("/add-roomservice", addRoomService);
+router.post("/get-roomservice", getRoomServices);
+router.put('/roomservice/:id', updateRoomService);
+
+router.post("/add-rides", addRides);
+router.post("/get-rides", getRides);
+router.put('/ride/:id', updateRides);
+
+
+router.post("/add-entertainment", addEntertainment);
+router.post("/get-entertainment", getEntertainment);
+router.put('/entertainment/:id', updateEntertainment);
+
+router.post("/add-otherservice", addOtherService);
+router.post("/get-otherservice", getOtherService);
+router.put('/otherservice/:id', updateOtherService);
 
 module.exports = router;
