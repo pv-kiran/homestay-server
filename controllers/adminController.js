@@ -41,6 +41,7 @@ const { upload } = require("../utils/multerHelper");
 const Restaurant = require("../models/restaurent");
 const HomelyFood = require("../models/homelyFood");
 const Rides = require("../models/rides");
+const { default: mongoose } = require("mongoose");
 
 
 //ADMIN SIGNUP
@@ -2286,6 +2287,75 @@ const getOtherService = async (req, res) => {
 };
 
 
+const getAllServices = async (req, res) => {
+  const { city } = req.query
+  try {
+    // Fetch all data in parallel
+    const [restaurants, homelyFood, rides, otherServices, entertainment, roomService] = await Promise.all([
+      Restaurant.find({
+        city: city
+      }),
+      HomelyFood.find(),
+      Rides.find(),
+      OtherService.find(),
+      Entertainment.find(),
+      RoomService.find()
+    ]);
+
+    // Combine the result into one object
+    const result = {
+      restaurants,
+      homelyFood,
+      rides,
+      otherService: otherServices,
+      entertainment,
+      roomService
+    };
+
+    // Send response
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching services:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+const updateHomeStayAddOns = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { restaurants, homelyFood, rides, otherService, entertainment, roomService } = req.body;
+
+    // Validate if ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid Homestay ID" });
+    }
+
+    // Find and update homestay with new service references
+    const updatedHomestay = await Homestay.findByIdAndUpdate(
+      id,
+      {
+        restaurants,
+        homelyfoods: homelyFood,
+        rides,
+        otherservice: otherService,
+        entertainments: entertainment,
+        roomservice: roomService
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedHomestay) {
+      return res.status(404).json({ error: "Homestay not found" });
+    }
+
+    res.status(200).json({ message: "Homestay services updated successfully", data: updatedHomestay });
+  } catch (error) {
+    console.error("Error updating homestay services:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+
 const sendCheckInReminders = async () => {
   try {
     console.log('Cron job started...');
@@ -2381,5 +2451,7 @@ module.exports = {
   getEntertainment,
   addOtherService,
   updateOtherService,
-  getOtherService
+  getOtherService,
+  getAllServices,
+  updateHomeStayAddOns
 };

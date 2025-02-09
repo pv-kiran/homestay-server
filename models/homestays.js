@@ -116,6 +116,30 @@ const homestaySchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    restaurants: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Restaurant',  // Reference to the Restaurant model
+    }],
+    homelyfoods: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'HomelyFood', // Reference to the Entertainment model
+    }],
+    entertainments: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Entertainment', // Reference to the Entertainment model
+    }],
+    rides: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Rides', // Reference to the Entertainment model
+    }],
+    roomservice: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'RoomService', // Reference to the Entertainment model
+    }],
+    otherservice: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OtherService', // Reference to the Entertainment model
+    }]
 })
 
 module.exports = mongoose.model('Homestay', homestaySchema);
