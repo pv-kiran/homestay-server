@@ -126,7 +126,7 @@ const homestaySchema = new mongoose.Schema({
     }],
     entertainments: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Entertainment', // Reference to the Entertainment model
+        ref: 'Entertainmnet', // Reference to the Entertainment model
     }],
     rides: [{
         type: mongoose.Schema.Types.ObjectId,

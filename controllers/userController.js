@@ -28,6 +28,7 @@ const { razorpay } = require("../utils/razorpay");
 const { generateHeader } = require("../utils/receiptUtils/headerUtils");
 const { generateBookingDetails } = require("../utils/receiptUtils/detailsUtils");
 const { generateFooter } = require("../utils/receiptUtils/footerUtils");
+const { default: mongoose } = require("mongoose");
 
 
 const userSignup = async (req, res) => {
@@ -500,54 +501,189 @@ const getAllCategories = async (req, res) => {
   }
 };
 
-const getHomestayById = async (req, res) => {
-  // const { error } = validateHomestayId.validate(req.params);
-  // if (error) {
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: error.details[0].message,
-  //   });
-  // }
+// const getHomestayById = async (req, res) => {
+//   // const { error } = validateHomestayId.validate(req.params);
+//   // if (error) {
+//   //   return res.status(400).json({
+//   //     success: false,
+//   //     message: error.details[0].message,
+//   //   });
+//   // }
 
+//   const { homestayId, currency } = req.params;
+
+
+//   try {
+//     const homestay = await Homestay.findById(homestayId)
+//       .select("-createdAt") // Exclude 'createdAt'
+//       .populate("category")
+//       .populate("amenities");
+
+//     if (!homestay) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Homestay not found",
+//       });
+//     }
+//     if (currency && currency !== 'INR') {
+//       try {
+//         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+
+
+//         homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
+
+
+//       } catch (conversionError) {
+//         console.error('Currency conversion error:', conversionError);
+//       }
+//     }
+//     return res.status(200).json({
+//       success: true,
+//       data: homestay,
+//     });
+//   } catch (error) {
+//     console.error("Error retrieving homestay:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while retrieving the homestay",
+//     })
+//   };
+// }
+
+// const getHomestayById = async (req, res) => {
+//   const { homestayId, currency } = req.params;
+
+//   if (!mongoose.Types.ObjectId.isValid(homestayId)) {
+//     return res.status(400).json({ success: false, message: "Invalid Homestay ID" });
+//   }
+
+//   try {
+//     const homestay = await Homestay.findById(homestayId)
+//       .select("-createdAt")
+//       .populate("category")
+//       .populate("amenities")
+//       .populate("restaurants")
+//       .populate("homelyfoods")
+//       .populate("entertainments")
+//       .populate("rides")
+//       .populate("roomservice")
+//       .populate("otherservice");
+
+//     if (!homestay) {
+//       return res.status(404).json({ success: false, message: "Homestay not found" });
+//     }
+
+
+//     if (currency && currency !== 'INR') {
+//       try {
+//         // const EXCHANGE_API_KEY = process.env.EXCHANGE_API_KEY;
+//         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+
+//         homestay.pricePerNight = Number((homestay.pricePerNight * data?.conversion_rate).toFixed(2));
+
+
+
+
+//       } catch (conversionError) {
+//         console.error('Currency conversion error:', conversionError);
+//         return res.status(502).json({ success: false, message: "Currency conversion service is unavailable." });
+//       }
+//     }
+
+//     return res.status(200).json({ success: true, data: homestay });
+
+//   } catch (error) {
+//     console.error("Error retrieving homestay:", error);
+//     return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
+//   }
+// };
+
+const getHomestayById = async (req, res) => {
   const { homestayId, currency } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(homestayId)) {
+    return res.status(400).json({ success: false, message: "Invalid Homestay ID" });
+  }
 
   try {
+    // Fetch homestay with all referenced data populated
     const homestay = await Homestay.findById(homestayId)
-      .select("-createdAt") // Exclude 'createdAt'
+      .select("-createdAt")
       .populate("category")
-      .populate("amenities");
+      .populate("amenities")
+      .populate("restaurants")
+      .populate("homelyfoods")
+      .populate("entertainments")
+      .populate("rides")
+      .populate("roomservice")
+      .populate("otherservice");
 
     if (!homestay) {
-      return res.status(404).json({
-        success: false,
-        message: "Homestay not found",
+      return res.status(404).json({ success: false, message: "Homestay not found" });
+    }
+
+    // If currency is not provided or is INR, return original data
+    if (!currency || currency === "INR") {
+      return res.status(200).json({ success: true, data: homestay });
+    }
+
+    // Fetch currency conversion rate
+    let conversionRate = 1;
+    try {
+      // const EXCHANGE_API_KEY = process.env.EXCHANGE_API_KEY;
+      const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+      conversionRate = data?.conversion_rate || 1;
+    } catch (conversionError) {
+      console.error("Currency conversion error:", conversionError);
+      return res.status(502).json({ success: false, message: "Currency conversion service is unavailable." });
+    }
+
+    // Function to convert amount fields
+    const convertAmount = (amount) => Number((amount * conversionRate).toFixed(2));
+
+    // Convert pricePerNight
+    homestay.pricePerNight = convertAmount(homestay.pricePerNight);
+    homestay.insuranceAmount = convertAmount(homestay.insuranceAmount);
+
+    // Convert all menu items' prices in restaurants
+    homestay.restaurants.forEach((restaurant) => {
+      restaurant.menuItems.forEach((item) => {
+        item.price = convertAmount(item.price);
       });
-    }
-    if (currency && currency !== 'INR') {
-      try {
-        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
-
-
-        homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
-
-
-      } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
-      }
-    }
-    return res.status(200).json({
-      success: true,
-      data: homestay,
     });
+
+    // Convert all menu items' prices in homelyfoods
+    homestay.homelyfoods.forEach((homelyFood) => {
+      homelyFood.menuItems.forEach((item) => {
+        item.price = convertAmount(item.price);
+      });
+    });
+
+    // Convert amounts in other referenced models
+    homestay.entertainments.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    homestay.rides.forEach((ride) => {
+      ride.amount = convertAmount(ride.amount);
+    });
+
+    homestay.roomservice.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    homestay.otherservice.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    // Return updated homestay data with converted currency
+    return res.status(200).json({ success: true, data: homestay });
+
   } catch (error) {
     console.error("Error retrieving homestay:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving the homestay",
-    })
-  };
-}
+    return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
+  }
+};
 
 const getAvailableHomestayAddresses = async (req, res) => {
   try {
@@ -944,8 +1080,6 @@ const getValidCoupons = async (req, res) => {
     });
   }
 }
-
-
 
 
 const getUserBookings = async (req, res) => {
