@@ -720,10 +720,8 @@ const getAvailableHomestayAddresses = async (req, res) => {
 
 const bookHomestay = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, currency, couponCode } = req.body;
+    const { homestayId, checkIn, checkOut, currency, couponCode, addOns } = req.body;
 
-    console.log(currency);
-    console.log(couponCode)
     // 1. Validate the input
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -741,7 +739,6 @@ const bookHomestay = async (req, res) => {
         message: 'Check-out date must be after the check-in date.',
       });
     }
-
 
 
     // 2. Check for overlapping bookings
@@ -767,9 +764,32 @@ const bookHomestay = async (req, res) => {
       });
     }
 
+    const getTotalAddonPrice = () => {
+      const hasItems = Object.values(addOns).some(category => Object.keys(category).length > 0);
+
+      if (!hasItems) {
+        return 0;
+      }
+
+      const totalAmount = Object.values(addOns).reduce(
+        (sum, category) =>
+          sum + Object.values(category).reduce(
+            (categorySum, item) => categorySum + item.price * item.quantity,
+            0
+          ),
+        0
+      );
+      return totalAmount;
+    }
+
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     let amount = dailyRate * numDays;
+
+    const calculateInsurance = () => {
+      return Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100)
+    }
+
     let conversionRate = 1;
     if (currency && currency.code !== 'INR') {
       try {
@@ -799,7 +819,8 @@ const bookHomestay = async (req, res) => {
         discountAmount = coupon.discountValue * conversionRate;
       }
     }
-    const newPrice = amount - discountAmount;
+
+    const newPrice = amount + getTotalAddonPrice() + (calculateInsurance() * conversionRate) - discountAmount
 
 
     const options = {
@@ -835,7 +856,7 @@ const bookHomestay = async (req, res) => {
 const bookHomestayComplete = async (req, res) => {
   try {
     const { homestayId, checkIn, checkOut, orderId,
-      paymentId } = req.body;
+      paymentId, addOns } = req.body;
 
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -844,7 +865,8 @@ const bookHomestayComplete = async (req, res) => {
       });
     }
 
-    1
+
+
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
@@ -876,7 +898,8 @@ const bookHomestayComplete = async (req, res) => {
       checkOut: checkOutDate,
       amount,
       orderId,
-      paymentId
+      paymentId,
+      selectedItems: addOns
     });
 
     await newBooking.save();
