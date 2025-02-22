@@ -1287,7 +1287,8 @@ const getAllBookings = async (req, res) => {
       isCheckedIn: booking.isCheckedIn,
       isCheckedOut: booking.isCheckedOut,
       isCancelled: booking.isCancelled,
-      userName: booking?.userId?.fullName
+      userName: booking?.userId?.fullName,
+      addOns: booking?.selectedItems
     }));
 
     // Respond with transformed bookings and pagination details

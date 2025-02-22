@@ -29,6 +29,8 @@ const { generateHeader } = require("../utils/receiptUtils/headerUtils");
 const { generateBookingDetails } = require("../utils/receiptUtils/detailsUtils");
 const { generateFooter } = require("../utils/receiptUtils/footerUtils");
 const { default: mongoose } = require("mongoose");
+const { convertPricesToINR } = require("../utils/conversion");
+
 
 
 const userSignup = async (req, res) => {
@@ -599,6 +601,7 @@ const getAllCategories = async (req, res) => {
 // };
 
 const getHomestayById = async (req, res) => {
+  console.log("Helloooo")
   const { homestayId, currency } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(homestayId)) {
@@ -618,6 +621,7 @@ const getHomestayById = async (req, res) => {
       .populate("roomservice")
       .populate("otherservice");
 
+
     if (!homestay) {
       return res.status(404).json({ success: false, message: "Homestay not found" });
     }
@@ -626,6 +630,7 @@ const getHomestayById = async (req, res) => {
     if (!currency || currency === "INR") {
       return res.status(200).json({ success: true, data: homestay });
     }
+
 
     // Fetch currency conversion rate
     let conversionRate = 1;
@@ -641,9 +646,10 @@ const getHomestayById = async (req, res) => {
     // Function to convert amount fields
     const convertAmount = (amount) => Number((amount * conversionRate).toFixed(2));
 
+
     // Convert pricePerNight
     homestay.pricePerNight = convertAmount(homestay.pricePerNight);
-    homestay.insuranceAmount = convertAmount(homestay.insuranceAmount);
+    // homestay.insuranceAmount = convertAmount(homestay.insuranceAmount);
 
     // Convert all menu items' prices in restaurants
     homestay.restaurants.forEach((restaurant) => {
@@ -785,6 +791,7 @@ const bookHomestay = async (req, res) => {
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     let amount = dailyRate * numDays;
+    console.log(amount);
 
     const calculateInsurance = () => {
       return Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100)
@@ -820,8 +827,12 @@ const bookHomestay = async (req, res) => {
       }
     }
 
-    const newPrice = amount + getTotalAddonPrice() + (calculateInsurance() * conversionRate) - discountAmount
+    console.log(addOns)
+    console.log(getTotalAddonPrice(), calculateInsurance() * conversionRate, conversionRate, discountAmount, typeof amount)
 
+    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) - discountAmount
+
+    console.log(newPrice);
 
     const options = {
       amount: Math.round(newPrice * 100), // Amount in paise
@@ -856,7 +867,9 @@ const bookHomestay = async (req, res) => {
 const bookHomestayComplete = async (req, res) => {
   try {
     const { homestayId, checkIn, checkOut, orderId,
-      paymentId, addOns } = req.body;
+      paymentId, addOns, currency } = req.body;
+
+    console.log(currency, "HHHHH");
 
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -887,10 +900,24 @@ const bookHomestayComplete = async (req, res) => {
 
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    const amount = dailyRate * numDays;
+    let amount = dailyRate * numDays;
 
 
-    // 3. Create the booking
+    let conversionRate = 1;
+    if (currency && currency !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/${currency.code}/INR`);
+        conversionRate = data?.conversion_rate;
+        amount = (amount * data?.conversion_rate).toFixed(2)
+      } catch (conversionError) {
+        console.error('Currency conversion error:', conversionError);
+      }
+    }
+
+    let updatedSelectedItems = convertPricesToINR(addOns, conversionRate)
+
+
+
     const newBooking = new Booking({
       userId: req.userId,
       homestayId,
@@ -899,7 +926,7 @@ const bookHomestayComplete = async (req, res) => {
       amount,
       orderId,
       paymentId,
-      selectedItems: addOns
+      selectedItems: updatedSelectedItems
     });
 
     await newBooking.save();
@@ -916,7 +943,7 @@ const bookHomestayComplete = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Room booking initiated.',
+      message: 'Room booking completed.',
       data: {
         ...newBooking.toObject(),
         homestayName: populatedData?.homestayId?.title || null,
