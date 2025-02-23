@@ -300,7 +300,6 @@ const adminLogout = async (req, res) => {
       message: "Admin Logout successful",
     });
   } catch (error) {
-    console.error("Error during logout:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred during logout",
@@ -350,7 +349,6 @@ const adminResendOtp = async (req, res) => {
       isVerified: adminExists.isVerified,
     });
   } catch (err) {
-    console.log(err);
     if (err.name === "ValidationError") {
       return res.status(400).json({ message: "Invalid input data" });
     } else if (err.name === "MongoError") {
@@ -504,7 +502,6 @@ const getAllCategories = async (req, res) => {
   try {
 
     const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
-    console.log(searchParams);
     const searchQuery = searchParams
       ? { categoryName: { $regex: searchParams, $options: "i" } }
       : {};
@@ -534,7 +531,6 @@ const getAllCategories = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving categories:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving categories",
@@ -598,7 +594,6 @@ const addHomestay = async (req, res) => {
       homestay: newHomestay,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: "Error adding homestay" });
   }
 };
@@ -673,7 +668,6 @@ const updateHomestay = async (req, res) => {
       homestay: existingHomestay,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: "Error updating homestay" });
   }
 };
@@ -734,7 +728,6 @@ const getHomestayById = async (req, res) => {
       data: homestay,
     });
   } catch (error) {
-    console.error("Error retrieving homestay:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving the homestay",
@@ -779,7 +772,6 @@ const getAllHomestays = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving homestays:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving homestays",
@@ -845,7 +837,6 @@ const updateAmenity = async (req, res) => {
       return res.status(500).json({ message: "Icon upload error" });
     }
 
-    console.log(req.body)
     try {
       const { error } = validateAmenity.validate(req.body);
       if (error) {
@@ -966,7 +957,6 @@ const getAllAmenities = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving amenities:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving amenities"
@@ -1016,7 +1006,6 @@ const getAllUsers = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving users:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving users",
@@ -1146,7 +1135,6 @@ const updateCoupon = async (req, res) => {
 
     res.status(200).json({ message: 'Coupon updated successfully', updatedCoupon });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: 'Error updating coupon', error });
   }
 }
@@ -1184,7 +1172,6 @@ const getAllCoupons = async (req, res) => {
   try {
 
     const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
-    console.log(searchParams);
     const searchQuery = searchParams
       ? { code: { $regex: searchParams, $options: "i" } }
       : {};
@@ -1222,7 +1209,6 @@ const getAllCoupons = async (req, res) => {
       pageSize: pagePerData
     })
   } catch (error) {
-    console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving coupons"
@@ -1301,7 +1287,6 @@ const getAllBookings = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving coupons"
@@ -1338,7 +1323,6 @@ const reorderImages = async (req, res) => {
     });
   } catch (error) {
     // Handle errors
-    console.error(error);
     res.status(500).json({ error: 'An error occurred while updating images.' });
   }
 };
@@ -1379,7 +1363,6 @@ const getYearlyReport = async (req, res) => {
 
     res.json(yearlyData);
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: error.message });
   }
 }
@@ -1609,7 +1592,6 @@ const getAllRestaurants = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving restaurants:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving restaurants",
@@ -1668,7 +1650,6 @@ const addHomelyFood = async (req, res) => {
   try {
     // Check if the restaurant name already exists
     const existingHomelyFood = await HomelyFood.findOne({ homelyFoodCenterName: req?.body?.homelyFoodCenterName });
-    console.log(existingHomelyFood)
     if (existingHomelyFood) {
       return res.status(400).json({ error: 'Restaurant with this name already exists' });
     }
@@ -1731,7 +1712,6 @@ const getAllHomelyFood = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving homelyFood:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving homelyFood",
@@ -1809,7 +1789,6 @@ const addRoomService = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -1859,7 +1838,6 @@ const updateRoomService = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -1898,7 +1876,6 @@ const getRoomServices = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -1935,7 +1912,6 @@ const addRides = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -1983,7 +1959,6 @@ const updateRides = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2022,7 +1997,6 @@ const getRides = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2059,7 +2033,6 @@ const addEntertainment = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -2112,7 +2085,6 @@ const updateEntertainment = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2151,7 +2123,6 @@ const getEntertainment = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2187,7 +2158,6 @@ const addOtherService = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -2240,7 +2210,6 @@ const updateOtherService = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2279,7 +2248,6 @@ const getOtherService = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2316,7 +2284,6 @@ const getAllServices = async (req, res) => {
     // Send response
     res.status(200).json(result);
   } catch (error) {
-    console.error("Error fetching services:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 }
@@ -2351,7 +2318,6 @@ const updateHomeStayAddOns = async (req, res) => {
 
     res.status(200).json({ message: "Homestay services updated successfully", data: updatedHomestay });
   } catch (error) {
-    console.error("Error updating homestay services:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 }
