@@ -196,7 +196,6 @@ const useResendOtp = async (req, res) => {
       isVerified: useExists.isVerified,
     });
   } catch (err) {
-    console.log(err);
     if (err.name === "ValidationError") {
       return res.status(400).json({ message: "Invalid input data" });
     } else if (err.name === "MongoError") {
@@ -453,7 +452,6 @@ const getAllHomestays = async (req, res) => {
           return convertedHomestay;
         });
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
       }
     }
 
@@ -469,7 +467,6 @@ const getAllHomestays = async (req, res) => {
       data: homestays,
     });
   } catch (error) {
-    console.error('Error retrieving homestays:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while retrieving homestays',
@@ -495,7 +492,6 @@ const getAllCategories = async (req, res) => {
       data: categories,
     });
   } catch (error) {
-    console.error("Error retrieving categories:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving categories",
@@ -503,105 +499,8 @@ const getAllCategories = async (req, res) => {
   }
 };
 
-// const getHomestayById = async (req, res) => {
-//   // const { error } = validateHomestayId.validate(req.params);
-//   // if (error) {
-//   //   return res.status(400).json({
-//   //     success: false,
-//   //     message: error.details[0].message,
-//   //   });
-//   // }
-
-//   const { homestayId, currency } = req.params;
-
-
-//   try {
-//     const homestay = await Homestay.findById(homestayId)
-//       .select("-createdAt") // Exclude 'createdAt'
-//       .populate("category")
-//       .populate("amenities");
-
-//     if (!homestay) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Homestay not found",
-//       });
-//     }
-//     if (currency && currency !== 'INR') {
-//       try {
-//         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
-
-
-//         homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
-
-
-//       } catch (conversionError) {
-//         console.error('Currency conversion error:', conversionError);
-//       }
-//     }
-//     return res.status(200).json({
-//       success: true,
-//       data: homestay,
-//     });
-//   } catch (error) {
-//     console.error("Error retrieving homestay:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "An error occurred while retrieving the homestay",
-//     })
-//   };
-// }
-
-// const getHomestayById = async (req, res) => {
-//   const { homestayId, currency } = req.params;
-
-//   if (!mongoose.Types.ObjectId.isValid(homestayId)) {
-//     return res.status(400).json({ success: false, message: "Invalid Homestay ID" });
-//   }
-
-//   try {
-//     const homestay = await Homestay.findById(homestayId)
-//       .select("-createdAt")
-//       .populate("category")
-//       .populate("amenities")
-//       .populate("restaurants")
-//       .populate("homelyfoods")
-//       .populate("entertainments")
-//       .populate("rides")
-//       .populate("roomservice")
-//       .populate("otherservice");
-
-//     if (!homestay) {
-//       return res.status(404).json({ success: false, message: "Homestay not found" });
-//     }
-
-
-//     if (currency && currency !== 'INR') {
-//       try {
-//         // const EXCHANGE_API_KEY = process.env.EXCHANGE_API_KEY;
-//         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
-
-//         homestay.pricePerNight = Number((homestay.pricePerNight * data?.conversion_rate).toFixed(2));
-
-
-
-
-//       } catch (conversionError) {
-//         console.error('Currency conversion error:', conversionError);
-//         return res.status(502).json({ success: false, message: "Currency conversion service is unavailable." });
-//       }
-//     }
-
-//     return res.status(200).json({ success: true, data: homestay });
-
-//   } catch (error) {
-//     console.error("Error retrieving homestay:", error);
-//     return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
-//   }
-// };
 
 const getHomestayById = async (req, res) => {
-  console.log("Helloooo")
   const { homestayId, currency } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(homestayId)) {
@@ -639,7 +538,6 @@ const getHomestayById = async (req, res) => {
       const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
       conversionRate = data?.conversion_rate || 1;
     } catch (conversionError) {
-      console.error("Currency conversion error:", conversionError);
       return res.status(502).json({ success: false, message: "Currency conversion service is unavailable." });
     }
 
@@ -686,7 +584,6 @@ const getHomestayById = async (req, res) => {
     return res.status(200).json({ success: true, data: homestay });
 
   } catch (error) {
-    console.error("Error retrieving homestay:", error);
     return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
   }
 };
@@ -716,7 +613,6 @@ const getAvailableHomestayAddresses = async (req, res) => {
       data: addresses,
     });
   } catch (error) {
-    console.error('Error retrieving addresses of homestays:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while retrieving addresses of homestays',
@@ -791,7 +687,6 @@ const bookHomestay = async (req, res) => {
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     let amount = dailyRate * numDays;
-    console.log(amount);
 
     const calculateInsurance = () => {
       return Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100)
@@ -804,13 +699,11 @@ const bookHomestay = async (req, res) => {
         conversionRate = data?.conversion_rate;
         amount = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
       }
     }
 
     let discountAmount = 0;
     if (couponCode) {
-      console.log(couponCode);
       const coupon = await Coupon.findOne({ code: couponCode });
       if (!coupon) {
         return res.status(404).json({ success: false, message: 'Coupon not found.' });
@@ -827,12 +720,9 @@ const bookHomestay = async (req, res) => {
       }
     }
 
-    console.log(addOns)
-    console.log(getTotalAddonPrice(), calculateInsurance() * conversionRate, conversionRate, discountAmount, typeof amount)
 
     const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) - discountAmount
 
-    console.log(newPrice);
 
     const options = {
       amount: Math.round(newPrice * 100), // Amount in paise
@@ -856,7 +746,6 @@ const bookHomestay = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating booking:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -869,7 +758,6 @@ const bookHomestayComplete = async (req, res) => {
     const { homestayId, checkIn, checkOut, orderId,
       paymentId, addOns, currency } = req.body;
 
-    console.log(currency, "HHHHH");
 
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -910,7 +798,6 @@ const bookHomestayComplete = async (req, res) => {
         conversionRate = data?.conversion_rate;
         amount = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
       }
     }
 
@@ -954,7 +841,6 @@ const bookHomestayComplete = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating booking:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -978,7 +864,6 @@ const getUserById = async (req, res) => {
       user
     })
   } catch (error) {
-    console.error("Error retrieving user data:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving the user data",
@@ -1078,7 +963,6 @@ const getValidCoupons = async (req, res) => {
     });
 
     const { currency } = req.query;
-    console.log(currency);
 
     // Filter coupons based on usageLimit, usageCount, and userRestrictions
     let filteredCoupons = coupons.filter((coupon) => {
@@ -1104,7 +988,6 @@ const getValidCoupons = async (req, res) => {
       }
     }
 
-    console.log(conversionRate)
 
     filteredCoupons = filteredCoupons.map(coupon => ({
       ...coupon.toObject(),
@@ -1123,7 +1006,6 @@ const getValidCoupons = async (req, res) => {
       data: filteredCoupons,
     });
   } catch (error) {
-    console.error("Error fetching coupons:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch coupons",
@@ -1176,7 +1058,6 @@ const getUserBookings = async (req, res) => {
 
     res.status(200).json(bookingDetails);
   } catch (error) {
-    console.error('Error fetching user bookings:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -1273,7 +1154,6 @@ const markAsCancelled = async (req, res) => {
 
 const checkFutureBooking = async (req, res) => {
   const { homeStayId } = req.params
-  console.log(homeStayId, req?.userId)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   try {
@@ -1295,7 +1175,6 @@ const checkFutureBooking = async (req, res) => {
       checkIn: null,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: 'Internal server error', error });
   }
 }
@@ -1353,7 +1232,6 @@ const applyCoupon = async (req, res) => {
         );
         conversionRate = data?.conversion_rate || 1;
       } catch (error) {
-        console.error('Currency conversion error:', error);
         return res.status(500).json({ success: false, message: 'Currency conversion failed.' });
       }
     }
@@ -1365,10 +1243,7 @@ const applyCoupon = async (req, res) => {
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
-        console.log(discountAmount, coupon.maxDiscount * conversionRate)
-        console.log(coupon.maxDiscount);
         discountAmount = Math.min(discountAmount, coupon.maxDiscount);
-        console.log(discountAmount)
       }
     } else if (coupon.discountType === 'fixed') {
       discountAmount = coupon.discountValue * conversionRate;
@@ -1395,7 +1270,6 @@ const applyCoupon = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error applying coupon:', error);
     return res.status(500).json({ success: false, message: 'Something went wrong.' });
   }
 };
@@ -1431,7 +1305,6 @@ const getLatestValidCoupon = async (req, res) => {
     });
   } catch (error) {
     // Handle any potential errors
-    console.error('Error fetching the latest valid coupon:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while fetching the coupon.',
@@ -1481,7 +1354,6 @@ const submitReview = async (req, res) => {
       // review 
     });
   } catch (error) {
-    console.error('Error submitting review:', error);
     res.status(500).json({ message: 'Something went wrong.' });
   }
 }
@@ -1514,7 +1386,6 @@ const getReviewsByHomestay = async (req, res) => {
       data: reviews,
     });
   } catch (error) {
-    console.error('Error fetching reviews:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while fetching reviews',
@@ -1579,7 +1450,6 @@ const generateReceipt = async (req, res) => {
 
     doc.end();
   } catch (error) {
-    console.error('PDF Generation Error:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
   }
 };
