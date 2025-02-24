@@ -1122,15 +1122,43 @@ const markAsCheckedOut = async (req, res) => {
   }
 };
 
+// const markAsCancelled = async (req, res) => {
+//   const { bookingId } = req.params;
+
+//   try {
+//     const booking = await Booking.findByIdAndUpdate(
+//       bookingId,
+//       { isCancelled: true },
+//       { new: true } // Return the updated document
+//     );
+
+//     if (!booking) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Booking not found'
+//       });
+//     }
+
+
+//     res.status(200).json({
+//       success: true,
+//       message: 'Booking cancelled successfully',
+//       booking
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error'
+//     });
+//   }
+// };
+
 const markAsCancelled = async (req, res) => {
   const { bookingId } = req.params;
 
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      bookingId,
-      { isCancelled: true },
-      { new: true } // Return the updated document
-    );
+    // First, find the booking without updating it
+    const booking = await Booking.findById(bookingId);
 
     if (!booking) {
       return res.status(404).json({
@@ -1138,15 +1166,85 @@ const markAsCancelled = async (req, res) => {
         message: 'Booking not found'
       });
     }
+
+    // Check if booking is already cancelled
+    if (booking.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
+    }
+
+    // Check if payment exists
+    if (booking.paymentId && booking.orderId) {
+      try {
+        // Process refund through Razorpay
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: booking.amount * 100, // Convert to paise
+          notes: {
+            bookingId: bookingId,
+            orderId: booking.orderId,
+            homestayId: booking.homestayId,
+            reason: 'Booking cancellation'
+          }
+        });
+
+        // Update booking with cancellation and refund details
+        const updatedBooking = await Booking.findByIdAndUpdate(
+          bookingId,
+          {
+            isCancelled: true,
+            cancelledAt: new Date(),
+            isRefunded: true,
+            refundId: refund.id,
+            refundAmount: booking.amount,
+            refundedAt: new Date()
+          },
+          { new: true }
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: 'Booking cancelled and refund processed successfully',
+          booking: updatedBooking,
+          refund: {
+            id: refund.id,
+            amount: refund.amount / 100 // Convert back to rupees for display
+          }
+        });
+
+      } catch (refundError) {
+        console.error('Refund failed:', refundError);
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to process refund',
+          error: refundError.message
+        });
+      }
+    }
+
+    // If no payment ID exists or refund not needed, just cancel the booking
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      {
+        isCancelled: true,
+        cancelledAt: new Date()
+      },
+      { new: true }
+    );
+
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
-      booking
+      booking: updatedBooking
     });
+
   } catch (error) {
+    console.error('Cancellation error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error.message
     });
   }
 };
@@ -1188,7 +1286,7 @@ const applyCoupon = async (req, res) => {
     }
 
     const userId = req.userId;
-    const { couponCode, homestayId, numberOfDays, currencyCode } = req.body;
+    const { couponCode, homestayId, numberOfDays, currencyCode, insuranceAmount, addOnAmount } = req.body;
 
     // Fetch coupon details
     const coupon = await Coupon.findOne({ code: couponCode });
@@ -1236,7 +1334,7 @@ const applyCoupon = async (req, res) => {
       }
     }
 
-    const convertedTotalPrice = totalPrice * conversionRate;
+    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + homestay?.pricePerNight;
 
     // Calculate discount
     let discountAmount = 0;

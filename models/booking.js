@@ -119,6 +119,19 @@ const bookingSchema = new mongoose.Schema({
         type: selectedItemsSchema,
         required: true,
     },
+    cancelledAt: {
+        type: Date
+    },
+    isRefunded: {
+        type: Boolean,
+        default: false
+    },
+    refundId: {
+        type: String,
+    },
+    refundedAt: {
+        type: Date,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

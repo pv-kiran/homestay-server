@@ -374,6 +374,12 @@ const validateApplyCoupon = Joi.object({
     'number.base': 'Number of days must be a number.',
     'number.min': 'Number of days must be at least 1.',
   }),
+  insuranceAmount: Joi.number().optional().messages({
+    'any.required': 'Insurance amount is required.',
+  }),
+  addOnAmount: Joi.number().optional().messages({
+    'any.required': 'Number of days is required.',
+  }),
 });
 
 const validateSubmitReview = Joi.object({
