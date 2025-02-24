@@ -104,6 +104,10 @@ const homestaySchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    gst: {
+        type: Number,
+        required: true
+    },
     insuranceDescription: {
         type: String,
         required: true

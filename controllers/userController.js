@@ -1189,6 +1189,13 @@ const markAsCancelled = async (req, res) => {
           }
         });
 
+        if (!refund || !refund.id) {
+          return res.status(400).json({
+            success: false,
+            message: 'Refund failed, no refund ID returned'
+          });
+        }
+
         // Update booking with cancellation and refund details
         const updatedBooking = await Booking.findByIdAndUpdate(
           bookingId,
@@ -1286,7 +1293,7 @@ const applyCoupon = async (req, res) => {
     }
 
     const userId = req.userId;
-    const { couponCode, homestayId, numberOfDays, currencyCode, insuranceAmount, addOnAmount } = req.body;
+    const { couponCode, homestayId, numberOfDays, currencyCode, insuranceAmount, addOnAmount, gst } = req.body;
 
     // Fetch coupon details
     const coupon = await Coupon.findOne({ code: couponCode });
@@ -1334,13 +1341,16 @@ const applyCoupon = async (req, res) => {
       }
     }
 
-    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + homestay?.pricePerNight;
+    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + homestay?.pricePerNight + (gst * numberOfDays);
+
+    console.log(convertedTotalPrice)
 
     // Calculate discount
     let discountAmount = 0;
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
+        console.log("Hellooooo max")
         discountAmount = Math.min(discountAmount, coupon.maxDiscount);
       }
     } else if (coupon.discountType === 'fixed') {

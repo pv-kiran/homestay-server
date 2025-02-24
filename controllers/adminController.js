@@ -42,7 +42,7 @@ const Restaurant = require("../models/restaurent");
 const HomelyFood = require("../models/homelyFood");
 const Rides = require("../models/rides");
 const { default: mongoose } = require("mongoose");
-
+const { razorpay } = require("../utils/razorpay");
 
 //ADMIN SIGNUP
 const adminSignUp = async (req, res) => {
@@ -1265,6 +1265,7 @@ const getAllBookings = async (req, res) => {
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       paymentId: booking.paymentId,
+      orderId: booking?.orderId,
       amount: booking.amount,
       createdAt: booking.createdAt,
       homestayName: booking.homestayId?.title || "Unknown Homestay",
@@ -1274,7 +1275,10 @@ const getAllBookings = async (req, res) => {
       isCheckedOut: booking.isCheckedOut,
       isCancelled: booking.isCancelled,
       userName: booking?.userId?.fullName,
-      addOns: booking?.selectedItems
+      addOns: booking?.selectedItems,
+      refundId: booking?.refundId,
+      isRefunded: booking?.isRefunded,
+      refundedAt: booking?.refundedAt
     }));
 
     // Respond with transformed bookings and pagination details
@@ -2361,6 +2365,99 @@ const sendCheckInReminders = async () => {
   }
 };
 
+
+const initiateRefund = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // First, find the booking without updating it
+    const booking = await Booking.findById(id).populate("homestayId");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check if booking is already cancelled
+    if (booking.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
+    }
+
+
+    if (booking.isRefunded) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund is already processed'
+      });
+    }
+
+    // Check if payment exists
+    if (booking.paymentId && booking.orderId) {
+      try {
+        // Process refund through Razorpay
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: booking.homestayId?.pricePerNight * 100, // Convert to paise
+          notes: {
+            bookingId: id,
+            orderId: booking.orderId,
+            homestayId: booking.homestayId?._id,
+            reason: 'Admin refund - caution deposit'
+          }
+        });
+
+        if (!refund || !refund.id) {
+          return res.status(400).json({
+            success: false,
+            message: 'Refund failed, no refund ID returned'
+          });
+        }
+
+        // Update booking with cancellation and refund details
+        const updatedBooking = await Booking.findByIdAndUpdate(
+          id,
+          {
+            isRefunded: true,
+            refundId: refund.id,
+            refundAmount: booking.amount,
+            refundedAt: new Date()
+          },
+          { new: true }
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: 'Refunding is processed',
+          booking: updatedBooking,
+          refund: {
+            id: refund.id,
+            amount: refund.amount / 100 // Convert back to rupees for display
+          }
+        });
+
+      } catch (refundError) {
+        console.error('Refund failed:', refundError);
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to process refund',
+          error: refundError.message
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Cancellation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -2414,5 +2511,6 @@ module.exports = {
   updateOtherService,
   getOtherService,
   getAllServices,
-  updateHomeStayAddOns
+  updateHomeStayAddOns,
+  initiateRefund
 };

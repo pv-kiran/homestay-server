@@ -54,7 +54,8 @@ const {
   getOtherService,
   updateOtherService,
   getAllServices,
-  updateHomeStayAddOns
+  updateHomeStayAddOns,
+  initiateRefund
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -143,5 +144,6 @@ router.put('/otherservice/:id', updateOtherService);
 
 router.get("/homestay/allservice", getAllServices)
 router.put("/homestay/allservice/:id", updateHomeStayAddOns)
+router.put("/booking/refund/:id", initiateRefund)
 
 module.exports = router;
