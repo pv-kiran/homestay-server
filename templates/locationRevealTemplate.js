@@ -1,3 +1,18 @@
+const createGoogleMapsLink = (latitude, longitude) => {
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        latitude = Number(latitude);
+        longitude = Number(longitude);
+
+        if (isNaN(latitude) || isNaN(longitude)) {
+            throw new Error('Latitude and longitude must be valid numbers');
+        }
+    }
+
+    // Construct the Google Maps URL with the coordinates
+    return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
+
 const generateLocationRevealTemplate = (booking) => {
     return `
         <!DOCTYPE html>
@@ -117,8 +132,8 @@ const generateLocationRevealTemplate = (booking) => {
             <h1>Your Hotel Location is Now Available!</h1>
             </div>
             <div class="content">
-            <p>Dear ${booking?.guestName},</p>
-            <p>Great news! As your check-in date approaches, we're excited to reveal the exact location of your hotel.</p>
+            <p>Dear ${booking?.userId?.fullName},</p>
+            <p>Great news! As your booking is successfull, we're excited to reveal the exact location of your homestay.</p>
             
             <div class="location-card">
                 <div class="location-title">
@@ -126,22 +141,29 @@ const generateLocationRevealTemplate = (booking) => {
                 </div>
                 <div class="detail-row">
                 <span class="detail-label">Hotel Name</span>
-                <span class="detail-value">${booking?.hotelName}</span>
+                <span class="detail-value">${booking?.homestayId?.title}</span>
                 </div>
                 <div class="detail-row">
                 <span class="detail-label">Address</span>
-                <span class="detail-value">${booking?.address}</span>
-                </div>
-                <div class="detail-row">
-                <span class="detail-label">Landmarks</span>
-                <span class="detail-value">${booking?.landmarks}</span>
+                <span class="detail-value">
+                ${booking?.homestayId?.address?.street}
+                </span>
+                 <span class="detail-value">
+                ${booking?.homestayId?.address?.city}
+                </span>
+                 <span class="detail-value">
+                ${booking?.homestayId?.address?.district}
+                </span>
+                 <span class="detail-value">
+                ${booking?.homestayId?.address?.state}
+                </span>
                 </div>
                 <div class="detail-row">
                 <span class="detail-label">Check-in Time</span>
                 <span class="detail-value">${booking?.checkInTime}</span>
                 </div>
                 <center>
-                <a href="${booking?.mapLink}" class="map-button">View map</a>
+                <a href="${createGoogleMapsLink(booking?.homestayId?.address?.coordinates?.latitude, booking?.homestayId?.address?.coordinates?.longitude)}" class="map-button">View map</a>
                 </center>
             </div>
 

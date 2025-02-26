@@ -136,6 +136,10 @@ const bookingSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    guests: {
+        type: Number,
+        required: true,
+    }
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

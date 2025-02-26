@@ -12,7 +12,7 @@ const {
   validateUserSignup,
   validateOtp,
   userValidationSchema,
-  validateHomestayId,
+  // validateHomestayId,
   validateUserUpdate,
   validateApplyCoupon,
   validateSubmitReview,
@@ -30,6 +30,9 @@ const { generateBookingDetails } = require("../utils/receiptUtils/detailsUtils")
 const { generateFooter } = require("../utils/receiptUtils/footerUtils");
 const { default: mongoose } = require("mongoose");
 const { convertPricesToINR } = require("../utils/conversion");
+const { generateBookingSuccessTemplate } = require("../templates/bookingSuccessTemplate");
+const { cancelationSuccessTemplate } = require("../templates/cancellationSuccessTemplate");
+
 
 
 
@@ -721,7 +724,7 @@ const bookHomestay = async (req, res) => {
     }
 
 
-    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) - discountAmount
+    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (homestay.pricePerNight * conversionRate) - discountAmount
 
 
     const options = {
@@ -755,8 +758,16 @@ const bookHomestay = async (req, res) => {
 
 const bookHomestayComplete = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, orderId,
-      paymentId, addOns, currency } = req.body;
+    const { homestayId,
+      checkIn,
+      checkOut,
+      orderId,
+      paymentId,
+      addOns,
+      currency,
+      amount,
+      guests
+    } = req.body;
 
 
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
@@ -765,7 +776,6 @@ const bookHomestayComplete = async (req, res) => {
         message: 'All fields (userId, homestayId, checkIn, checkOut) are required.',
       });
     }
-
 
 
     const checkInDate = new Date(checkIn);
@@ -786,9 +796,9 @@ const bookHomestayComplete = async (req, res) => {
       });
     }
 
-    const dailyRate = homestay.pricePerNight;
-    const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    let amount = dailyRate * numDays;
+    // const dailyRate = homestay.pricePerNight;
+    // const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+    // let amount = dailyRate * numDays;
 
 
     let conversionRate = 1;
@@ -804,16 +814,16 @@ const bookHomestayComplete = async (req, res) => {
     let updatedSelectedItems = convertPricesToINR(addOns, conversionRate)
 
 
-
     const newBooking = new Booking({
       userId: req.userId,
       homestayId,
       checkIn: checkInDate,
       checkOut: checkOutDate,
-      amount,
+      amount: amount / 100,
       orderId,
       paymentId,
-      selectedItems: updatedSelectedItems
+      selectedItems: updatedSelectedItems,
+      guests
     });
 
     await newBooking.save();
@@ -821,12 +831,23 @@ const bookHomestayComplete = async (req, res) => {
     const populatedData = await Booking.findById(newBooking._id)
       .populate({
         path: 'homestayId',
-        select: 'title address.city address.state', // Select the 'name' field from Homestay
+        select: 'title address.street address.city address.district address.state address.coordinates',
       })
       .populate({
         path: 'userId',
-        select: 'fullName', // Select the 'fullName' field from User
+        select: 'fullName email', // Select the 'fullName' field from User
       });
+
+
+    const mailOptions = {
+      from: "admin@gmail.com",
+      to: `${populatedData?.userId?.email}`,
+      subject: "Booking Confirmation",
+      html: generateBookingSuccessTemplate(populatedData),
+    };
+
+    await transporter.sendMail(mailOptions);
+
 
     return res.status(201).json({
       success: true,
@@ -841,6 +862,7 @@ const bookHomestayComplete = async (req, res) => {
     });
 
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -1122,43 +1144,13 @@ const markAsCheckedOut = async (req, res) => {
   }
 };
 
-// const markAsCancelled = async (req, res) => {
-//   const { bookingId } = req.params;
-
-//   try {
-//     const booking = await Booking.findByIdAndUpdate(
-//       bookingId,
-//       { isCancelled: true },
-//       { new: true } // Return the updated document
-//     );
-
-//     if (!booking) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'Booking not found'
-//       });
-//     }
-
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Booking cancelled successfully',
-//       booking
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error'
-//     });
-//   }
-// };
 
 const markAsCancelled = async (req, res) => {
   const { bookingId } = req.params;
 
   try {
     // First, find the booking without updating it
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId)
 
     if (!booking) {
       return res.status(404).json({
@@ -1208,7 +1200,18 @@ const markAsCancelled = async (req, res) => {
             refundedAt: new Date()
           },
           { new: true }
-        );
+        ).populate('userId')
+          .populate('homestayId');
+
+
+        const mailOptions = {
+          from: "admin@gmail.com",
+          to: `${updatedBooking?.userId?.email}`,
+          subject: "Booking Confirmation",
+          html: cancelationSuccessTemplate(updatedBooking),
+        };
+
+        await transporter.sendMail(mailOptions);
 
         return res.status(200).json({
           success: true,
@@ -1219,6 +1222,8 @@ const markAsCancelled = async (req, res) => {
             amount: refund.amount / 100 // Convert back to rupees for display
           }
         });
+
+
 
       } catch (refundError) {
         console.error('Refund failed:', refundError);
@@ -1239,6 +1244,10 @@ const markAsCancelled = async (req, res) => {
       },
       { new: true }
     );
+
+
+
+
 
     res.status(200).json({
       success: true,
@@ -1382,8 +1391,6 @@ const applyCoupon = async (req, res) => {
   }
 };
 
-
-
 //USER - GET  LATEST COUPON FOR LANDING PAGE AD
 const getLatestValidCoupon = async (req, res) => {
   try {
@@ -1470,21 +1477,16 @@ const submitReview = async (req, res) => {
 const getReviewsByHomestay = async (req, res) => {
   const { homeStayId } = req.params;
   try {
-    // if (!mongoose.Types.ObjectId.isValid(homeStayId)) {
-    //   return res.status(400).json({
-    //       success: false,
-    //       message: 'Homestay ID is required',
-    //   });
-    // }
 
     const reviews = await Review.find({ homestayId: homeStayId })
       .populate('userId', 'fullName email profilePic') // Populate name and email fields of the user
       .sort({ createdAt: -1 });
 
     if (reviews?.length === 0) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: 'No reviews found for this homestay',
+        data: [],
       });
     }
 
@@ -1500,7 +1502,6 @@ const getReviewsByHomestay = async (req, res) => {
     });
   }
 }
-
 
 //USER - GENERATE RECIEPT AFTER BOOKING - IN SUCCESS PAGE OF UI
 const generateReceipt = async (req, res) => {
