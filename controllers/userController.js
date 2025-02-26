@@ -1035,7 +1035,6 @@ const getValidCoupons = async (req, res) => {
   }
 }
 
-
 const getUserBookings = async (req, res) => {
   const { currency } = req.query;
   try {
@@ -1061,6 +1060,7 @@ const getUserBookings = async (req, res) => {
       }
     }
 
+
     // Transform bookings into desired format
     const bookingDetails = bookings.map(booking => ({
       _id: booking?._id,
@@ -1075,9 +1075,10 @@ const getUserBookings = async (req, res) => {
       isCheckedIn: booking?.isCheckedIn,
       isCheckedOut: booking?.isCheckedOut,
       isCancelled: booking?.isCancelled,
-      homestayId: booking?.homestayId._id
+      homestayId: booking?.homestayId._id,
+      refundId: booking?.refundId,
+      selectedItems: booking?.selectedItems
     }));
-
     res.status(200).json(bookingDetails);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
