@@ -692,8 +692,12 @@ const bookHomestay = async (req, res) => {
     let amount = dailyRate * numDays;
 
     const calculateInsurance = () => {
-      return Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100)
+      return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100) : 0
     }
+
+    // const calculateGST = () => {
+    //   return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.gst) / 100) : 0;
+    // }
 
     let conversionRate = 1;
     if (currency && currency.code !== 'INR') {
@@ -724,7 +728,10 @@ const bookHomestay = async (req, res) => {
     }
 
 
-    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (homestay.pricePerNight * conversionRate) - discountAmount
+    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (homestay.pricePerNight * conversionRate) - discountAmount;
+
+
+    console.log(newPrice, "HHHHHH")
 
 
     const options = {
@@ -892,7 +899,6 @@ const getUserById = async (req, res) => {
     })
   }
 }
-
 
 //USER - PROFILE UPDATION
 const updateUserData = async (req, res) => {
