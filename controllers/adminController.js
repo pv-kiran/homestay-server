@@ -41,7 +41,8 @@ const { upload } = require("../utils/multerHelper");
 const Restaurant = require("../models/restaurent");
 const HomelyFood = require("../models/homelyFood");
 const Rides = require("../models/rides");
-
+const { default: mongoose } = require("mongoose");
+const { razorpay } = require("../utils/razorpay");
 
 //ADMIN SIGNUP
 const adminSignUp = async (req, res) => {
@@ -299,7 +300,6 @@ const adminLogout = async (req, res) => {
       message: "Admin Logout successful",
     });
   } catch (error) {
-    console.error("Error during logout:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred during logout",
@@ -349,7 +349,6 @@ const adminResendOtp = async (req, res) => {
       isVerified: adminExists.isVerified,
     });
   } catch (err) {
-    console.log(err);
     if (err.name === "ValidationError") {
       return res.status(400).json({ message: "Invalid input data" });
     } else if (err.name === "MongoError") {
@@ -503,7 +502,6 @@ const getAllCategories = async (req, res) => {
   try {
 
     const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
-    console.log(searchParams);
     const searchQuery = searchParams
       ? { categoryName: { $regex: searchParams, $options: "i" } }
       : {};
@@ -533,7 +531,6 @@ const getAllCategories = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving categories:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving categories",
@@ -597,7 +594,6 @@ const addHomestay = async (req, res) => {
       homestay: newHomestay,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: "Error adding homestay" });
   }
 };
@@ -672,7 +668,6 @@ const updateHomestay = async (req, res) => {
       homestay: existingHomestay,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: "Error updating homestay" });
   }
 };
@@ -733,7 +728,6 @@ const getHomestayById = async (req, res) => {
       data: homestay,
     });
   } catch (error) {
-    console.error("Error retrieving homestay:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving the homestay",
@@ -778,7 +772,6 @@ const getAllHomestays = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving homestays:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving homestays",
@@ -844,7 +837,6 @@ const updateAmenity = async (req, res) => {
       return res.status(500).json({ message: "Icon upload error" });
     }
 
-    console.log(req.body)
     try {
       const { error } = validateAmenity.validate(req.body);
       if (error) {
@@ -965,7 +957,6 @@ const getAllAmenities = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving amenities:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving amenities"
@@ -1015,7 +1006,6 @@ const getAllUsers = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving users:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving users",
@@ -1145,7 +1135,6 @@ const updateCoupon = async (req, res) => {
 
     res.status(200).json({ message: 'Coupon updated successfully', updatedCoupon });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: 'Error updating coupon', error });
   }
 }
@@ -1183,7 +1172,6 @@ const getAllCoupons = async (req, res) => {
   try {
 
     const { pagePerData = 100, pageNumber = 1, searchParams = "" } = req.body;
-    console.log(searchParams);
     const searchQuery = searchParams
       ? { code: { $regex: searchParams, $options: "i" } }
       : {};
@@ -1221,7 +1209,6 @@ const getAllCoupons = async (req, res) => {
       pageSize: pagePerData
     })
   } catch (error) {
-    console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving coupons"
@@ -1278,6 +1265,7 @@ const getAllBookings = async (req, res) => {
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       paymentId: booking.paymentId,
+      orderId: booking?.orderId,
       amount: booking.amount,
       createdAt: booking.createdAt,
       homestayName: booking.homestayId?.title || "Unknown Homestay",
@@ -1286,7 +1274,11 @@ const getAllBookings = async (req, res) => {
       isCheckedIn: booking.isCheckedIn,
       isCheckedOut: booking.isCheckedOut,
       isCancelled: booking.isCancelled,
-      userName: booking?.userId?.fullName
+      userName: booking?.userId?.fullName,
+      addOns: booking?.selectedItems,
+      refundId: booking?.refundId,
+      isRefunded: booking?.isRefunded,
+      refundedAt: booking?.refundedAt
     }));
 
     // Respond with transformed bookings and pagination details
@@ -1299,7 +1291,6 @@ const getAllBookings = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving coupons:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving coupons"
@@ -1336,7 +1327,6 @@ const reorderImages = async (req, res) => {
     });
   } catch (error) {
     // Handle errors
-    console.error(error);
     res.status(500).json({ error: 'An error occurred while updating images.' });
   }
 };
@@ -1377,7 +1367,6 @@ const getYearlyReport = async (req, res) => {
 
     res.json(yearlyData);
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: error.message });
   }
 }
@@ -1607,7 +1596,6 @@ const getAllRestaurants = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving restaurants:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving restaurants",
@@ -1666,7 +1654,6 @@ const addHomelyFood = async (req, res) => {
   try {
     // Check if the restaurant name already exists
     const existingHomelyFood = await HomelyFood.findOne({ homelyFoodCenterName: req?.body?.homelyFoodCenterName });
-    console.log(existingHomelyFood)
     if (existingHomelyFood) {
       return res.status(400).json({ error: 'Restaurant with this name already exists' });
     }
@@ -1729,7 +1716,6 @@ const getAllHomelyFood = async (req, res) => {
       pageSize: pagePerData,
     });
   } catch (error) {
-    console.error("Error retrieving homelyFood:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving homelyFood",
@@ -1807,7 +1793,6 @@ const addRoomService = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -1857,7 +1842,6 @@ const updateRoomService = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -1896,7 +1880,6 @@ const getRoomServices = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -1933,7 +1916,6 @@ const addRides = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -1981,7 +1963,6 @@ const updateRides = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2020,7 +2001,6 @@ const getRides = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2057,7 +2037,6 @@ const addEntertainment = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -2110,7 +2089,6 @@ const updateEntertainment = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2149,7 +2127,6 @@ const getEntertainment = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2185,7 +2162,6 @@ const addOtherService = async (req, res) => {
       roomService: newRoomService,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -2238,7 +2214,6 @@ const updateOtherService = async (req, res) => {
       service: updatedRoomService,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Internal server error" });
   }
 
@@ -2277,7 +2252,6 @@ const getOtherService = async (req, res) => {
       pageSize: pagePerData
     });
   } catch (error) {
-    console.error("Error retrieving room service:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving services"
@@ -2286,9 +2260,75 @@ const getOtherService = async (req, res) => {
 };
 
 
+const getAllServices = async (req, res) => {
+  const { city } = req.query
+  try {
+    // Fetch all data in parallel
+    const [restaurants, homelyFood, rides, otherServices, entertainment, roomService] = await Promise.all([
+      Restaurant.find({
+        city: city
+      }),
+      HomelyFood.find(),
+      Rides.find(),
+      OtherService.find(),
+      Entertainment.find(),
+      RoomService.find()
+    ]);
+
+    // Combine the result into one object
+    const result = {
+      restaurants,
+      homelyFood,
+      rides,
+      otherService: otherServices,
+      entertainment,
+      roomService
+    };
+
+    // Send response
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+const updateHomeStayAddOns = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { restaurants, homelyFood, rides, otherService, entertainment, roomService } = req.body;
+
+    // Validate if ID is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid Homestay ID" });
+    }
+
+    // Find and update homestay with new service references
+    const updatedHomestay = await Homestay.findByIdAndUpdate(
+      id,
+      {
+        restaurants,
+        homelyfoods: homelyFood,
+        rides,
+        otherservice: otherService,
+        entertainments: entertainment,
+        roomservice: roomService
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedHomestay) {
+      return res.status(404).json({ error: "Homestay not found" });
+    }
+
+    res.status(200).json({ message: "Homestay services updated successfully", data: updatedHomestay });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+
 const sendCheckInReminders = async () => {
   try {
-    console.log('Cron job started...');
 
     const now = new Date();
     const tomorrow = new Date(now.setDate(now.getDate() + 1));
@@ -2296,8 +2336,6 @@ const sendCheckInReminders = async () => {
     const startOfDayUTC = new Date(tomorrow.setHours(0, 0, 0, 0));
     const endOfDayUTC = new Date(tomorrow.setHours(23, 59, 59, 999));
 
-    console.log(`Start of day (UTC): ${startOfDayUTC}`);
-    console.log(`End of day (UTC): ${endOfDayUTC}`);
 
     // Fetch bookings for the next day
     const bookings = await Booking.find({
@@ -2307,11 +2345,9 @@ const sendCheckInReminders = async () => {
       .populate('userId')
       .populate('homestayId');
 
-    console.log(bookings);
 
 
     if (bookings.length === 0) {
-      console.log('No bookings found for tomorrow.');
       return;
     }
 
@@ -2324,9 +2360,101 @@ const sendCheckInReminders = async () => {
     //   }
     // }
 
-    console.log('Cron job completed successfully.');
   } catch (error) {
     console.error('Error in cron job:', error);
+  }
+};
+
+
+const initiateRefund = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // First, find the booking without updating it
+    const booking = await Booking.findById(id).populate("homestayId");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check if booking is already cancelled
+    if (booking.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
+    }
+
+
+    if (booking.isRefunded) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund is already processed'
+      });
+    }
+
+    // Check if payment exists
+    if (booking.paymentId && booking.orderId) {
+      try {
+        // Process refund through Razorpay
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: booking.homestayId?.pricePerNight * 100, // Convert to paise
+          notes: {
+            bookingId: id,
+            orderId: booking.orderId,
+            homestayId: booking.homestayId?._id,
+            reason: 'Admin refund - caution deposit'
+          }
+        });
+
+        if (!refund || !refund.id) {
+          return res.status(400).json({
+            success: false,
+            message: 'Refund failed, no refund ID returned'
+          });
+        }
+
+        // Update booking with cancellation and refund details
+        const updatedBooking = await Booking.findByIdAndUpdate(
+          id,
+          {
+            isRefunded: true,
+            refundId: refund.id,
+            refundAmount: booking.amount,
+            refundedAt: new Date()
+          },
+          { new: true }
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: 'Refunding is processed',
+          booking: updatedBooking,
+          refund: {
+            id: refund.id,
+            amount: refund.amount / 100 // Convert back to rupees for display
+          }
+        });
+
+      } catch (refundError) {
+        console.error('Refund failed:', refundError);
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to process refund',
+          error: refundError.message
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Cancellation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 };
 
@@ -2381,5 +2509,8 @@ module.exports = {
   getEntertainment,
   addOtherService,
   updateOtherService,
-  getOtherService
+  getOtherService,
+  getAllServices,
+  updateHomeStayAddOns,
+  initiateRefund
 };

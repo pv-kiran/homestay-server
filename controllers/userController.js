@@ -12,7 +12,7 @@ const {
   validateUserSignup,
   validateOtp,
   userValidationSchema,
-  validateHomestayId,
+  // validateHomestayId,
   validateUserUpdate,
   validateApplyCoupon,
   validateSubmitReview,
@@ -28,6 +28,12 @@ const { razorpay } = require("../utils/razorpay");
 const { generateHeader } = require("../utils/receiptUtils/headerUtils");
 const { generateBookingDetails } = require("../utils/receiptUtils/detailsUtils");
 const { generateFooter } = require("../utils/receiptUtils/footerUtils");
+const { default: mongoose } = require("mongoose");
+const { convertPricesToINR } = require("../utils/conversion");
+const { generateBookingSuccessTemplate } = require("../templates/bookingSuccessTemplate");
+const { cancelationSuccessTemplate } = require("../templates/cancellationSuccessTemplate");
+
+
 
 
 const userSignup = async (req, res) => {
@@ -193,7 +199,6 @@ const useResendOtp = async (req, res) => {
       isVerified: useExists.isVerified,
     });
   } catch (err) {
-    console.log(err);
     if (err.name === "ValidationError") {
       return res.status(400).json({ message: "Invalid input data" });
     } else if (err.name === "MongoError") {
@@ -450,7 +455,6 @@ const getAllHomestays = async (req, res) => {
           return convertedHomestay;
         });
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
       }
     }
 
@@ -466,7 +470,6 @@ const getAllHomestays = async (req, res) => {
       data: homestays,
     });
   } catch (error) {
-    console.error('Error retrieving homestays:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while retrieving homestays',
@@ -492,7 +495,6 @@ const getAllCategories = async (req, res) => {
       data: categories,
     });
   } catch (error) {
-    console.error("Error retrieving categories:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving categories",
@@ -500,54 +502,94 @@ const getAllCategories = async (req, res) => {
   }
 };
 
-const getHomestayById = async (req, res) => {
-  // const { error } = validateHomestayId.validate(req.params);
-  // if (error) {
-  //   return res.status(400).json({
-  //     success: false,
-  //     message: error.details[0].message,
-  //   });
-  // }
 
+const getHomestayById = async (req, res) => {
   const { homestayId, currency } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(homestayId)) {
+    return res.status(400).json({ success: false, message: "Invalid Homestay ID" });
+  }
 
   try {
+    // Fetch homestay with all referenced data populated
     const homestay = await Homestay.findById(homestayId)
-      .select("-createdAt") // Exclude 'createdAt'
+      .select("-createdAt")
       .populate("category")
-      .populate("amenities");
+      .populate("amenities")
+      .populate("restaurants")
+      .populate("homelyfoods")
+      .populate("entertainments")
+      .populate("rides")
+      .populate("roomservice")
+      .populate("otherservice");
+
 
     if (!homestay) {
-      return res.status(404).json({
-        success: false,
-        message: "Homestay not found",
+      return res.status(404).json({ success: false, message: "Homestay not found" });
+    }
+
+    // If currency is not provided or is INR, return original data
+    if (!currency || currency === "INR") {
+      return res.status(200).json({ success: true, data: homestay });
+    }
+
+
+    // Fetch currency conversion rate
+    let conversionRate = 1;
+    try {
+      // const EXCHANGE_API_KEY = process.env.EXCHANGE_API_KEY;
+      const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+      conversionRate = data?.conversion_rate || 1;
+    } catch (conversionError) {
+      return res.status(502).json({ success: false, message: "Currency conversion service is unavailable." });
+    }
+
+    // Function to convert amount fields
+    const convertAmount = (amount) => Number((amount * conversionRate).toFixed(2));
+
+
+    // Convert pricePerNight
+    homestay.pricePerNight = convertAmount(homestay.pricePerNight);
+    // homestay.insuranceAmount = convertAmount(homestay.insuranceAmount);
+
+    // Convert all menu items' prices in restaurants
+    homestay.restaurants.forEach((restaurant) => {
+      restaurant.menuItems.forEach((item) => {
+        item.price = convertAmount(item.price);
       });
-    }
-    if (currency && currency !== 'INR') {
-      try {
-        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
-
-
-        homestay.pricePerNight = (homestay.pricePerNight * data?.conversion_rate).toFixed(2);
-
-
-      } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
-      }
-    }
-    return res.status(200).json({
-      success: true,
-      data: homestay,
     });
+
+    // Convert all menu items' prices in homelyfoods
+    homestay.homelyfoods.forEach((homelyFood) => {
+      homelyFood.menuItems.forEach((item) => {
+        item.price = convertAmount(item.price);
+      });
+    });
+
+    // Convert amounts in other referenced models
+    homestay.entertainments.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    homestay.rides.forEach((ride) => {
+      ride.amount = convertAmount(ride.amount);
+    });
+
+    homestay.roomservice.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    homestay.otherservice.forEach((service) => {
+      service.amount = convertAmount(service.amount);
+    });
+
+    // Return updated homestay data with converted currency
+    return res.status(200).json({ success: true, data: homestay });
+
   } catch (error) {
-    console.error("Error retrieving homestay:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving the homestay",
-    })
-  };
-}
+    return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
+  }
+};
 
 const getAvailableHomestayAddresses = async (req, res) => {
   try {
@@ -574,7 +616,6 @@ const getAvailableHomestayAddresses = async (req, res) => {
       data: addresses,
     });
   } catch (error) {
-    console.error('Error retrieving addresses of homestays:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while retrieving addresses of homestays',
@@ -584,10 +625,8 @@ const getAvailableHomestayAddresses = async (req, res) => {
 
 const bookHomestay = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, currency, couponCode } = req.body;
+    const { homestayId, checkIn, checkOut, currency, couponCode, addOns } = req.body;
 
-    console.log(currency);
-    console.log(couponCode)
     // 1. Validate the input
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -605,7 +644,6 @@ const bookHomestay = async (req, res) => {
         message: 'Check-out date must be after the check-in date.',
       });
     }
-
 
 
     // 2. Check for overlapping bookings
@@ -631,9 +669,36 @@ const bookHomestay = async (req, res) => {
       });
     }
 
+    const getTotalAddonPrice = () => {
+      const hasItems = Object.values(addOns).some(category => Object.keys(category).length > 0);
+
+      if (!hasItems) {
+        return 0;
+      }
+
+      const totalAmount = Object.values(addOns).reduce(
+        (sum, category) =>
+          sum + Object.values(category).reduce(
+            (categorySum, item) => categorySum + item.price * item.quantity,
+            0
+          ),
+        0
+      );
+      return totalAmount;
+    }
+
     const dailyRate = homestay.pricePerNight;
     const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     let amount = dailyRate * numDays;
+
+    const calculateInsurance = () => {
+      return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100) : 0
+    }
+
+    // const calculateGST = () => {
+    //   return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.gst) / 100) : 0;
+    // }
+
     let conversionRate = 1;
     if (currency && currency.code !== 'INR') {
       try {
@@ -641,13 +706,11 @@ const bookHomestay = async (req, res) => {
         conversionRate = data?.conversion_rate;
         amount = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
       }
     }
 
     let discountAmount = 0;
     if (couponCode) {
-      console.log(couponCode);
       const coupon = await Coupon.findOne({ code: couponCode });
       if (!coupon) {
         return res.status(404).json({ success: false, message: 'Coupon not found.' });
@@ -663,7 +726,12 @@ const bookHomestay = async (req, res) => {
         discountAmount = coupon.discountValue * conversionRate;
       }
     }
-    const newPrice = amount - discountAmount;
+
+
+    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (homestay.pricePerNight * conversionRate) - discountAmount;
+
+
+    console.log(newPrice, "HHHHHH")
 
 
     const options = {
@@ -688,7 +756,6 @@ const bookHomestay = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating booking:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -698,8 +765,17 @@ const bookHomestay = async (req, res) => {
 
 const bookHomestayComplete = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, orderId,
-      paymentId } = req.body;
+    const { homestayId,
+      checkIn,
+      checkOut,
+      orderId,
+      paymentId,
+      addOns,
+      currency,
+      amount,
+      guests
+    } = req.body;
+
 
     if (!req.userId || !homestayId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -708,7 +784,7 @@ const bookHomestayComplete = async (req, res) => {
       });
     }
 
-    1
+
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
@@ -727,20 +803,34 @@ const bookHomestayComplete = async (req, res) => {
       });
     }
 
-    const dailyRate = homestay.pricePerNight;
-    const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    const amount = dailyRate * numDays;
+    // const dailyRate = homestay.pricePerNight;
+    // const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+    // let amount = dailyRate * numDays;
 
 
-    // 3. Create the booking
+    let conversionRate = 1;
+    if (currency && currency !== 'INR') {
+      try {
+        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/${currency.code}/INR`);
+        conversionRate = data?.conversion_rate;
+        amount = (amount * data?.conversion_rate).toFixed(2)
+      } catch (conversionError) {
+      }
+    }
+
+    let updatedSelectedItems = convertPricesToINR(addOns, conversionRate)
+
+
     const newBooking = new Booking({
       userId: req.userId,
       homestayId,
       checkIn: checkInDate,
       checkOut: checkOutDate,
-      amount,
+      amount: amount / 100,
       orderId,
-      paymentId
+      paymentId,
+      selectedItems: updatedSelectedItems,
+      guests
     });
 
     await newBooking.save();
@@ -748,16 +838,27 @@ const bookHomestayComplete = async (req, res) => {
     const populatedData = await Booking.findById(newBooking._id)
       .populate({
         path: 'homestayId',
-        select: 'title address.city address.state', // Select the 'name' field from Homestay
+        select: 'title address.street address.city address.district address.state address.coordinates',
       })
       .populate({
         path: 'userId',
-        select: 'fullName', // Select the 'fullName' field from User
+        select: 'fullName email', // Select the 'fullName' field from User
       });
+
+
+    const mailOptions = {
+      from: "admin@gmail.com",
+      to: `${populatedData?.userId?.email}`,
+      subject: "Booking Confirmation",
+      html: generateBookingSuccessTemplate(populatedData),
+    };
+
+    await transporter.sendMail(mailOptions);
+
 
     return res.status(201).json({
       success: true,
-      message: 'Room booking initiated.',
+      message: 'Room booking completed.',
       data: {
         ...newBooking.toObject(),
         homestayName: populatedData?.homestayId?.title || null,
@@ -768,7 +869,7 @@ const bookHomestayComplete = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating booking:', error);
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -792,14 +893,12 @@ const getUserById = async (req, res) => {
       user
     })
   } catch (error) {
-    console.error("Error retrieving user data:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving the user data",
     })
   }
 }
-
 
 //USER - PROFILE UPDATION
 const updateUserData = async (req, res) => {
@@ -892,7 +991,6 @@ const getValidCoupons = async (req, res) => {
     });
 
     const { currency } = req.query;
-    console.log(currency);
 
     // Filter coupons based on usageLimit, usageCount, and userRestrictions
     let filteredCoupons = coupons.filter((coupon) => {
@@ -918,7 +1016,6 @@ const getValidCoupons = async (req, res) => {
       }
     }
 
-    console.log(conversionRate)
 
     filteredCoupons = filteredCoupons.map(coupon => ({
       ...coupon.toObject(),
@@ -937,16 +1034,12 @@ const getValidCoupons = async (req, res) => {
       data: filteredCoupons,
     });
   } catch (error) {
-    console.error("Error fetching coupons:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch coupons",
     });
   }
 }
-
-
-
 
 const getUserBookings = async (req, res) => {
   const { currency } = req.query;
@@ -973,6 +1066,7 @@ const getUserBookings = async (req, res) => {
       }
     }
 
+
     // Transform bookings into desired format
     const bookingDetails = bookings.map(booking => ({
       _id: booking?._id,
@@ -987,12 +1081,12 @@ const getUserBookings = async (req, res) => {
       isCheckedIn: booking?.isCheckedIn,
       isCheckedOut: booking?.isCheckedOut,
       isCancelled: booking?.isCancelled,
-      homestayId: booking?.homestayId._id
+      homestayId: booking?.homestayId._id,
+      refundId: booking?.refundId,
+      selectedItems: booking?.selectedItems
     }));
-
     res.status(200).json(bookingDetails);
   } catch (error) {
-    console.error('Error fetching user bookings:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -1057,15 +1151,13 @@ const markAsCheckedOut = async (req, res) => {
   }
 };
 
+
 const markAsCancelled = async (req, res) => {
   const { bookingId } = req.params;
 
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      bookingId,
-      { isCancelled: true },
-      { new: true } // Return the updated document
-    );
+    // First, find the booking without updating it
+    const booking = await Booking.findById(bookingId)
 
     if (!booking) {
       return res.status(404).json({
@@ -1073,15 +1165,109 @@ const markAsCancelled = async (req, res) => {
         message: 'Booking not found'
       });
     }
+
+    // Check if booking is already cancelled
+    if (booking.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
+    }
+
+    // Check if payment exists
+    if (booking.paymentId && booking.orderId) {
+      try {
+        // Process refund through Razorpay
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: booking.amount * 100, // Convert to paise
+          notes: {
+            bookingId: bookingId,
+            orderId: booking.orderId,
+            homestayId: booking.homestayId,
+            reason: 'Booking cancellation'
+          }
+        });
+
+        if (!refund || !refund.id) {
+          return res.status(400).json({
+            success: false,
+            message: 'Refund failed, no refund ID returned'
+          });
+        }
+
+        // Update booking with cancellation and refund details
+        const updatedBooking = await Booking.findByIdAndUpdate(
+          bookingId,
+          {
+            isCancelled: true,
+            cancelledAt: new Date(),
+            isRefunded: true,
+            refundId: refund.id,
+            refundAmount: booking.amount,
+            refundedAt: new Date()
+          },
+          { new: true }
+        ).populate('userId')
+          .populate('homestayId');
+
+
+        const mailOptions = {
+          from: "admin@gmail.com",
+          to: `${updatedBooking?.userId?.email}`,
+          subject: "Booking Confirmation",
+          html: cancelationSuccessTemplate(updatedBooking),
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Booking cancelled and refund processed successfully',
+          booking: updatedBooking,
+          refund: {
+            id: refund.id,
+            amount: refund.amount / 100 // Convert back to rupees for display
+          }
+        });
+
+
+
+      } catch (refundError) {
+        console.error('Refund failed:', refundError);
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to process refund',
+          error: refundError.message
+        });
+      }
+    }
+
+    // If no payment ID exists or refund not needed, just cancel the booking
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      {
+        isCancelled: true,
+        cancelledAt: new Date()
+      },
+      { new: true }
+    );
+
+
+
+
+
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
-      booking
+      booking: updatedBooking
     });
+
   } catch (error) {
+    console.error('Cancellation error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error.message
     });
   }
 };
@@ -1089,7 +1275,6 @@ const markAsCancelled = async (req, res) => {
 
 const checkFutureBooking = async (req, res) => {
   const { homeStayId } = req.params
-  console.log(homeStayId, req?.userId)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   try {
@@ -1111,7 +1296,6 @@ const checkFutureBooking = async (req, res) => {
       checkIn: null,
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: 'Internal server error', error });
   }
 }
@@ -1125,7 +1309,7 @@ const applyCoupon = async (req, res) => {
     }
 
     const userId = req.userId;
-    const { couponCode, homestayId, numberOfDays, currencyCode } = req.body;
+    const { couponCode, homestayId, numberOfDays, currencyCode, insuranceAmount, addOnAmount, gst } = req.body;
 
     // Fetch coupon details
     const coupon = await Coupon.findOne({ code: couponCode });
@@ -1169,22 +1353,21 @@ const applyCoupon = async (req, res) => {
         );
         conversionRate = data?.conversion_rate || 1;
       } catch (error) {
-        console.error('Currency conversion error:', error);
         return res.status(500).json({ success: false, message: 'Currency conversion failed.' });
       }
     }
 
-    const convertedTotalPrice = totalPrice * conversionRate;
+    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + homestay?.pricePerNight + (gst * numberOfDays);
+
+    console.log(convertedTotalPrice)
 
     // Calculate discount
     let discountAmount = 0;
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
-        console.log(discountAmount, coupon.maxDiscount * conversionRate)
-        console.log(coupon.maxDiscount);
+        console.log("Hellooooo max")
         discountAmount = Math.min(discountAmount, coupon.maxDiscount);
-        console.log(discountAmount)
       }
     } else if (coupon.discountType === 'fixed') {
       discountAmount = coupon.discountValue * conversionRate;
@@ -1211,12 +1394,9 @@ const applyCoupon = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error applying coupon:', error);
     return res.status(500).json({ success: false, message: 'Something went wrong.' });
   }
 };
-
-
 
 //USER - GET  LATEST COUPON FOR LANDING PAGE AD
 const getLatestValidCoupon = async (req, res) => {
@@ -1247,7 +1427,6 @@ const getLatestValidCoupon = async (req, res) => {
     });
   } catch (error) {
     // Handle any potential errors
-    console.error('Error fetching the latest valid coupon:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while fetching the coupon.',
@@ -1297,7 +1476,6 @@ const submitReview = async (req, res) => {
       // review 
     });
   } catch (error) {
-    console.error('Error submitting review:', error);
     res.status(500).json({ message: 'Something went wrong.' });
   }
 }
@@ -1306,21 +1484,16 @@ const submitReview = async (req, res) => {
 const getReviewsByHomestay = async (req, res) => {
   const { homeStayId } = req.params;
   try {
-    // if (!mongoose.Types.ObjectId.isValid(homeStayId)) {
-    //   return res.status(400).json({
-    //       success: false,
-    //       message: 'Homestay ID is required',
-    //   });
-    // }
 
     const reviews = await Review.find({ homestayId: homeStayId })
       .populate('userId', 'fullName email profilePic') // Populate name and email fields of the user
       .sort({ createdAt: -1 });
 
     if (reviews?.length === 0) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: 'No reviews found for this homestay',
+        data: [],
       });
     }
 
@@ -1330,14 +1503,12 @@ const getReviewsByHomestay = async (req, res) => {
       data: reviews,
     });
   } catch (error) {
-    console.error('Error fetching reviews:', error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred while fetching reviews',
     });
   }
 }
-
 
 //USER - GENERATE RECIEPT AFTER BOOKING - IN SUCCESS PAGE OF UI
 const generateReceipt = async (req, res) => {
@@ -1395,7 +1566,6 @@ const generateReceipt = async (req, res) => {
 
     doc.end();
   } catch (error) {
-    console.error('PDF Generation Error:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
   }
 };

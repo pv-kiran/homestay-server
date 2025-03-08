@@ -52,7 +52,10 @@ const {
   updateEntertainment,
   addOtherService,
   getOtherService,
-  updateOtherService
+  updateOtherService,
+  getAllServices,
+  updateHomeStayAddOns,
+  initiateRefund
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -138,5 +141,9 @@ router.put('/entertainment/:id', updateEntertainment);
 router.post("/add-otherservice", addOtherService);
 router.post("/get-otherservice", getOtherService);
 router.put('/otherservice/:id', updateOtherService);
+
+router.get("/homestay/allservice", getAllServices)
+router.put("/homestay/allservice/:id", updateHomeStayAddOns)
+router.put("/booking/refund/:id", initiateRefund)
 
 module.exports = router;

@@ -223,6 +223,10 @@ const validateHomestay = Joi.object({
     "string.empty": "Insurance Description cannot be empty",
     "string.min": "Insurance Description should have a minimum length of 3",
   }),
+  gst: Joi.number().integer().required().messages({
+    "number.base": "GST  must be a number.",
+    "any.required": "GST  is required.",
+  }),
 });
 
 const validateUserSignup = Joi.object({
@@ -373,6 +377,15 @@ const validateApplyCoupon = Joi.object({
     'any.required': 'Number of days is required.',
     'number.base': 'Number of days must be a number.',
     'number.min': 'Number of days must be at least 1.',
+  }),
+  insuranceAmount: Joi.number().optional().messages({
+    'any.required': 'Insurance amount is required.',
+  }),
+  addOnAmount: Joi.number().optional().messages({
+    'any.required': 'Number of days is required.',
+  }),
+  gst: Joi.number().optional().messages({
+    'any.required': 'Insurance amount is required.',
   }),
 });
 

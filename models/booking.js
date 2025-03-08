@@ -1,5 +1,67 @@
 const mongoose = require('mongoose');
 
+const selectedItemSchema = new mongoose.Schema({
+    id: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+    },
+    name: {
+        type: String,
+        required: true,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
+    quantity: {
+        type: Number,
+        required: true,
+    },
+    type: {
+        type: String, // For food items (e.g., "breakfast", "lunch")
+    },
+    parentName: {
+        type: String, // For restaurants/homelyFoods
+    },
+    description: {
+        type: String, // For other services like room service, rides, etc.
+    },
+});
+
+// Define the structure for selectedItems (grouping by category)
+const selectedItemsSchema = new mongoose.Schema({
+    restaurants: {
+        type: Map,
+        of: selectedItemSchema, // Store restaurant items using their ID as keys
+        default: {},
+    },
+    homelyFoods: {
+        type: Map,
+        of: selectedItemSchema,
+        default: {},
+    },
+    otherServices: {
+        type: Map,
+        of: selectedItemSchema,
+        default: {},
+    },
+    roomServices: {
+        type: Map,
+        of: selectedItemSchema,
+        default: {},
+    },
+    rides: {
+        type: Map,
+        of: selectedItemSchema,
+        default: {},
+    },
+    entertainments: {
+        type: Map,
+        of: selectedItemSchema,
+        default: {},
+    },
+});
+
 const bookingSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -21,7 +83,6 @@ const bookingSchema = new mongoose.Schema({
     },
     originalPrice: {
         type: Number,
-        // required: true,
     },
     discountedPrice: {
         type: Number,
@@ -29,7 +90,6 @@ const bookingSchema = new mongoose.Schema({
     couponCode: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Coupon',
-        // required: true,
     },
     amount: {
         type: Number,
@@ -55,10 +115,31 @@ const bookingSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    selectedItems: {
+        type: selectedItemsSchema,
+        required: true,
+    },
+    cancelledAt: {
+        type: Date
+    },
+    isRefunded: {
+        type: Boolean,
+        default: false
+    },
+    refundId: {
+        type: String,
+    },
+    refundedAt: {
+        type: Date,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
+    guests: {
+        type: Number,
+        required: true,
+    }
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
