@@ -15,7 +15,13 @@ let { connectDB } = require("./db/connection");
 // cors
 const cors = require("cors");
 app.use(
-  cors({ credentials: true, origin: "http://localhost:5173" })
+  cors({
+    credentials: true,
+    origin: [
+      "http://localhost:5173",
+      "https://homestay-client-iota.vercel.app"
+    ]
+  })
 );
 
 // parsing the cookies
