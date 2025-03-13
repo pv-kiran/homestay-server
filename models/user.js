@@ -66,6 +66,13 @@ const userSchema = new mongoose.Schema({
     },
     profilePic: {
         type: String,
+    },
+    idProof: { 
+        type: String,
+    },
+    isIdUploaded: {  
+        type: Boolean,
+        default: false,
     }
 },
 {

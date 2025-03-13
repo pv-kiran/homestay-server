@@ -459,6 +459,18 @@ const validateRoomService = Joi.object({
   }),
 });
 
+const validateIdProofControl = Joi.object({
+  disclaimerNote: Joi.string().trim().min(10).max(500).required().messages({
+    "string.empty": "Disclaimer note cannot be empty",
+    "string.min": "Disclaimer note must be at least 10 characters",
+    "string.max": "Disclaimer note cannot exceed 500 characters",
+    "any.required": "Disclaimer note is required",
+  }),
+  isIdProofMandatory: Joi.boolean().required().messages({
+    "any.required": "ID proof mandatory field is required.",
+  }),
+});
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -478,5 +490,6 @@ module.exports = {
   validateSubmitReview,
   restaurantSchemaValidation,
   homelyFoodValidation,
-  validateRoomService
+  validateRoomService,
+  validateIdProofControl,
 };

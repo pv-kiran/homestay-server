@@ -55,7 +55,9 @@ const {
   updateOtherService,
   getAllServices,
   updateHomeStayAddOns,
-  initiateRefund
+  initiateRefund,
+  getIdProofMandatoryStatus,
+  updateIdProofControl,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -142,8 +144,11 @@ router.post("/add-otherservice", addOtherService);
 router.post("/get-otherservice", getOtherService);
 router.put('/otherservice/:id', updateOtherService);
 
-router.get("/homestay/allservice", getAllServices)
-router.put("/homestay/allservice/:id", updateHomeStayAddOns)
-router.put("/booking/refund/:id", initiateRefund)
+router.get("/homestay/allservice", getAllServices);
+router.put("/homestay/allservice/:id", updateHomeStayAddOns);
+router.put("/booking/refund/:id", initiateRefund);
+
+router.put("/update-idcontrol", updateIdProofControl);
+router.get("/get-idstatus", getIdProofMandatoryStatus);
 
 module.exports = router;
