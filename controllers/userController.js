@@ -1641,6 +1641,51 @@ const getIdProofStatus = async (req, res) => {
   }
 };
 
+//USER - USER GET ALL CANCELLATION POLICY
+const getCancellationPolicy = async (req, res) => {
+    try {
+        const { homestayId } = req.params;
+
+        // Validate homestayId
+        if (!homestayId) {
+            return res.status(400).json({
+                success: false,
+                message: "Homestay ID is required.",
+            });
+        }
+
+        // Fetch homestay and select only the cancellationPolicy field
+        const homestay = await Homestay.findById(homestayId).select("cancellationPolicy");
+
+        // If homestay does not exist or has no cancellation policy
+        if (!homestay) {
+            return res.status(404).json({
+                success: false,
+                message: "No homestay found with the given ID.",
+            });
+        }
+
+        if (!homestay.cancellationPolicy || homestay.cancellationPolicy.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No cancellation policy found for this homestay.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Cancellation policy retrieved successfully.",
+            data: homestay.cancellationPolicy, // Returns only the cancellation policy
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching cancellation policy.",
+            error: error.message,
+        });
+    }
+};
 
 module.exports = {
   userSignup,
@@ -1670,5 +1715,6 @@ module.exports = {
   getReviewsByHomestay,
   generateReceipt,
   updateIdProof,
-  getIdProofStatus
+  getIdProofStatus,
+  getCancellationPolicy,
 }

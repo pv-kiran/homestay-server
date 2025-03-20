@@ -27,6 +27,7 @@ const {
   homelyFoodValidation,
   validateRoomService,
   validateIdProofControl,
+  validateCancellationPolicy,
 } = require("../utils/validationHelper");
 const {
   getHashedPassword,
@@ -2514,6 +2515,45 @@ const getIdProofMandatoryStatus = async (req, res) => {
   }
 };
 
+//ADMIN - DYNAMIC CANCELLATION POLICY UPDATE
+const updateCancellationPolicy = async (req, res) => {
+  try {
+    const { homestayId } = req.params;
+
+    // Validate request body
+    const { error } = validateCancellationPolicy.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    const { cancellationPolicy } = req.body;
+
+    // Find and update homestay
+    const updatedHomestay = await Homestay.findByIdAndUpdate(
+      homestayId,
+      { cancellationPolicy, updatedAt: new Date() },
+      { new: true, upsert: false }
+    );
+
+    if (!updatedHomestay) {
+      return res.status(404).json({ success: false, message: "Homestay not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cancellation policy updated successfully.",
+      data: updatedHomestay.cancellationPolicy,
+    });
+  } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Server error while updating cancellation policy.",
+        error: error.message,
+      });
+  }
+};
+
+
 module.exports = {
   adminSignUp,
   adminOtpVerify,
@@ -2571,4 +2611,5 @@ module.exports = {
   initiateRefund,
   updateIdProofControl,
   getIdProofMandatoryStatus,
+  updateCancellationPolicy,
 };

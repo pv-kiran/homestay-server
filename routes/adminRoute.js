@@ -58,6 +58,7 @@ const {
   initiateRefund,
   getIdProofMandatoryStatus,
   updateIdProofControl,
+  updateCancellationPolicy,
 } = require("../controllers/adminController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -150,5 +151,7 @@ router.put("/booking/refund/:id", initiateRefund);
 
 router.put("/update-idcontrol", updateIdProofControl);
 router.get("/get-idstatus", getIdProofMandatoryStatus);
+
+router.put("/cancellation-policy/:homestayId", updateCancellationPolicy);
 
 module.exports = router;

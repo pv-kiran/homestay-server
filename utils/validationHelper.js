@@ -471,6 +471,33 @@ const validateIdProofControl = Joi.object({
   }),
 });
 
+const validateCancellationPolicy = Joi.object({
+  cancellationPolicy: Joi.array()
+    .items(
+      Joi.object({
+        policyName: Joi.string().trim().required(),
+        hoursBeforeCheckIn: Joi.number().min(0).required().messages({
+          "number.base": "Hours before check-in must be a number",
+          "number.min": "Hours before check-in cannot be negative",
+          "any.required": "Hours before check-in is required",
+        }),
+        refundPercentage: Joi.number().min(0).max(100).required().messages({
+          "number.base": "Refund percentage must be a number",
+          "number.min": "Refund percentage cannot be negative",
+          "number.max": "Refund percentage cannot exceed 100",
+          "any.required": "Refund percentage is required",
+        }),
+      })
+    )
+    .min(1)
+    .required()
+    .messages({
+      "array.min": "At least one cancellation policy must be provided",
+      "any.required": "Cancellation policy is required",
+    }),
+});
+
+
 module.exports = {
   validateAdminSignup,
   validateAdminLogin,
@@ -492,4 +519,5 @@ module.exports = {
   homelyFoodValidation,
   validateRoomService,
   validateIdProofControl,
+  validateCancellationPolicy,
 };
