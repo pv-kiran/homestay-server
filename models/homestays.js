@@ -143,7 +143,24 @@ const homestaySchema = new mongoose.Schema({
     otherservice: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OtherService', // Reference to the Entertainment model
-    }]
+    }],
+    cancellationPolicy: [
+        {
+            policyName: {
+                type: String,
+            },
+            hoursBeforeCheckIn: {
+                type: Number,
+                required: true,
+            },
+            refundPercentage: {
+                type: Number,
+                required: true,
+                min: 0,
+                max: 100,
+            }
+        }
+    ]
 })
 
 module.exports = mongoose.model('Homestay', homestaySchema);

@@ -26,6 +26,9 @@ const {
   submitReview,
   getReviewsByHomestay,
   generateReceipt,
+  updateIdProof,
+  getIdProofStatus,
+  getCancellationPolicy,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -41,6 +44,7 @@ router.post("/auth/update-profile", authenticateToken, updateUserData);
 router.get("/auth/view-profile", authenticateToken, getUserById);
 router.put("/auth/update-propic", authenticateToken, updateProPic);
 router.get("/auth/view-profile", authenticateToken, getUserById)
+router.post("/auth/upload-idproof", authenticateToken, updateIdProof);
 
 router.post("/get-allhomestays", getAllHomestays);
 router.get("/homestay/:homestayId/:currency", getHomestayById);
@@ -67,6 +71,8 @@ router.get("/test/:homeStayId", getReviewsByHomestay);
 
 router.get("/download-receipt/:bookingId", authenticateToken, isUser, generateReceipt);
 
+router.get("/get-idstatus", authenticateToken, getIdProofStatus);
+router.get("/get-cancellation-policy/:homestayId", getCancellationPolicy);
 
 module.exports = router;
 

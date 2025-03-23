@@ -20,12 +20,23 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
 };
 
+const idFileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.mimetype)) {
+        return cb(new Error('Only jpg, jpeg, and png files are allowed'), false);
+    }
+    cb(null, true);
+};
+
 const upload = multer({ storage, fileFilter });
 
 const homestayUpload = multer({ storage, fileFilter });
+
+const idUpload = multer({ storage, idFileFilter })
 
 
 module.exports = {
     upload,
     homestayUpload,
+    idUpload,
 };

@@ -3,6 +3,7 @@ const User = require("../models/user");
 const Homestay = require("../models/homestays");
 const Category = require("../models/category");
 const Coupon = require("../models/coupon");
+const IdProofControl = require("../models/idProofControl");
 const PDFDocument = require('pdfkit');
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
 const { transporter } = require("../utils/emailHelper");
@@ -22,7 +23,7 @@ const Booking = require("../models/booking");
 const Review = require("../models/review");
 
 const { cloudinary } = require("../utils/cloudinaryHelper");
-const { upload } = require("../utils/multerHelper");
+const { upload, idUpload } = require("../utils/multerHelper");
 const { razorpay } = require("../utils/razorpay");
 
 const { generateHeader } = require("../utils/receiptUtils/headerUtils");
@@ -888,9 +889,12 @@ const getUserById = async (req, res) => {
         message: "User not found"
       });
     }
+    const bookingsCount = await Booking.countDocuments({ userId });
+
     res.status(200).json({
       success: true,
-      user
+      user,
+      bookingsCount
     })
   } catch (error) {
     return res.status(500).json({
@@ -1570,6 +1574,118 @@ const generateReceipt = async (req, res) => {
   }
 };
 
+//USER - UPDATE ID PROOF
+const updateIdProof = async (req, res) => {
+  idUpload.single("idProof")(req, res, async (uploadError) => {
+    if (uploadError) {
+      console.log(uploadError,"uploadError");
+      
+      return res.status(500).json({ message: "ID proof upload error" });
+    }
+    try {
+      const userId = req.userId;
+
+      const existingUser = await User.findById(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let idProofUrl = req.body.idProof;
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path);
+          idProofUrl = result.secure_url;
+        } catch (cloudinaryError) {
+          return res
+            .status(500)
+            .json({ message: "Error in uploading ID proof to Cloudinary" });
+        }
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { idProof: idProofUrl, isIdUploaded: true },
+        { new: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "ID proof uploaded successfully",
+        idProof: updatedUser.idProof,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+};
+
+//USER - ID PROOF MANDATORY STATUS
+const getIdProofStatus = async (req, res) => {
+  try {
+    const settings = await IdProofControl.findOne();
+    return res.status(200).json({
+      success: true,
+      data: settings
+      ? {
+          disclaimerNote: settings.disclaimerNote,
+          isIdProofMandatory: settings.isIdProofMandatory
+        }
+      : {},
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching Id proof settings",
+      error: error.message,
+    });
+  }
+};
+
+//USER - USER GET ALL CANCELLATION POLICY
+const getCancellationPolicy = async (req, res) => {
+    try {
+        const { homestayId } = req.params;
+
+        // Validate homestayId
+        if (!homestayId) {
+            return res.status(400).json({
+                success: false,
+                message: "Homestay ID is required.",
+            });
+        }
+
+        // Fetch homestay and select only the cancellationPolicy field
+        const homestay = await Homestay.findById(homestayId).select("cancellationPolicy");
+
+        // If homestay does not exist or has no cancellation policy
+        if (!homestay) {
+            return res.status(404).json({
+                success: false,
+                message: "No homestay found with the given ID.",
+            });
+        }
+
+        if (!homestay.cancellationPolicy || homestay.cancellationPolicy.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No cancellation policy found for this homestay.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Cancellation policy retrieved successfully.",
+            data: homestay.cancellationPolicy, // Returns only the cancellation policy
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching cancellation policy.",
+            error: error.message,
+        });
+    }
+};
 
 module.exports = {
   userSignup,
@@ -1597,5 +1713,8 @@ module.exports = {
   checkFutureBooking,
   submitReview,
   getReviewsByHomestay,
-  generateReceipt
+  generateReceipt,
+  updateIdProof,
+  getIdProofStatus,
+  getCancellationPolicy,
 }
