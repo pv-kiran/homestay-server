@@ -338,7 +338,7 @@ const userLogout = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Admin Logout successful",
+      message: "User Logout successful",
     });
   } catch (error) {
     return res.status(500).json({
