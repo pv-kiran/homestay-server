@@ -29,6 +29,7 @@ const {
   updateIdProof,
   getIdProofStatus,
   getCancellationPolicy,
+  contactUs,
 } = require("../controllers/userController");
 
 const { authenticateToken, isUser } = require("../middleware/authMiddleware");
@@ -73,6 +74,8 @@ router.get("/download-receipt/:bookingId", authenticateToken, isUser, generateRe
 
 router.get("/get-idstatus", authenticateToken, getIdProofStatus);
 router.get("/get-cancellation-policy/:homestayId", getCancellationPolicy);
+
+router.post("/contact-us", contactUs);
 
 module.exports = router;
 
