@@ -6,6 +6,7 @@ const Coupon = require("../models/coupon");
 const IdProofControl = require("../models/idProofControl");
 const PDFDocument = require('pdfkit');
 const { generateOtpEmailTemplate } = require("../templates/otpEmailTemplate");
+const { generateContactUs } = require("../templates/contactUsTemplate");
 const { transporter } = require("../utils/emailHelper");
 const { getToken } = require("../utils/jwtHelper");
 const { getOtpExpiry, generateOtp } = require("../utils/otpHelper");
@@ -340,7 +341,7 @@ const userLogout = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Admin Logout successful",
+      message: "User Logout successful",
     });
   } catch (error) {
     return res.status(500).json({
@@ -1704,6 +1705,24 @@ const getCancellationPolicy = async (req, res) => {
   }
 };
 
+//USER - CONTACT FORM
+const contactUs = async (req, res) => {
+  const { name, email, subject, message } = req.body;
+
+  const mailOptions = {
+    from: `${email}`,
+    to: `silpasheelassk@gmail.com`,
+    subject: "New Contact Form Submission",
+    html: generateContactUs(name, email, subject, message),
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ success: true, message: "Message sent successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to send message" });
+  }
+}
+
 module.exports = {
   userSignup,
   userOtpVerify,
@@ -1734,4 +1753,5 @@ module.exports = {
   updateIdProof,
   getIdProofStatus,
   getCancellationPolicy,
+  contactUs
 }
