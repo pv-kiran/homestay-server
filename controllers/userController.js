@@ -136,6 +136,7 @@ const userOtpVerify = async (req, res) => {
             accountCreationStatus: user?.accountCreationStatus,
             method: "email-otp",
             name: user?.fullName,
+            isIdUploaded: user?.isIdUploaded,
           },
           message: "Signed In",
         });
@@ -270,6 +271,7 @@ const googleSignIn = async (req, res) => {
         name: user?.fullName,
         accountCreationStatus: user?.accountCreationStatus,
         method: "google-auth",
+        isIdUploaded: user?.isIdUploaded,
       },
       message: "Signed In",
     });
@@ -505,6 +507,7 @@ const getAllCategories = async (req, res) => {
 
 
 const getHomestayById = async (req, res) => {
+
   const { homestayId, currency } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(homestayId)) {
@@ -523,6 +526,7 @@ const getHomestayById = async (req, res) => {
       .populate("rides")
       .populate("roomservice")
       .populate("otherservice");
+
 
 
     if (!homestay) {
@@ -549,6 +553,9 @@ const getHomestayById = async (req, res) => {
     const convertAmount = (amount) => Number((amount * conversionRate).toFixed(2));
 
 
+    const isUploaded = await IdProofControl.findOne();
+    homestay.isIdProofMandatory = isUploaded?.isIdProofMandatory;
+
     // Convert pricePerNight
     homestay.pricePerNight = convertAmount(homestay.pricePerNight);
     // homestay.insuranceAmount = convertAmount(homestay.insuranceAmount);
@@ -559,6 +566,13 @@ const getHomestayById = async (req, res) => {
         item.price = convertAmount(item.price);
       });
     });
+
+
+    // console.log("Heeee")
+
+
+
+
 
     // Convert all menu items' prices in homelyfoods
     homestay.homelyfoods.forEach((homelyFood) => {
@@ -584,10 +598,13 @@ const getHomestayById = async (req, res) => {
       service.amount = convertAmount(service.amount);
     });
 
+    console.log(homestay)
+
     // Return updated homestay data with converted currency
     return res.status(200).json({ success: true, data: homestay });
 
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
   }
 };
@@ -1578,8 +1595,8 @@ const generateReceipt = async (req, res) => {
 const updateIdProof = async (req, res) => {
   idUpload.single("idProof")(req, res, async (uploadError) => {
     if (uploadError) {
-      console.log(uploadError,"uploadError");
-      
+      console.log(uploadError, "uploadError");
+
       return res.status(500).json({ message: "ID proof upload error" });
     }
     try {
@@ -1626,11 +1643,11 @@ const getIdProofStatus = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: settings
-      ? {
+        ? {
           disclaimerNote: settings.disclaimerNote,
           isIdProofMandatory: settings.isIdProofMandatory
         }
-      : {},
+        : {},
     });
   } catch (error) {
     return res.status(500).json({
@@ -1643,48 +1660,48 @@ const getIdProofStatus = async (req, res) => {
 
 //USER - USER GET ALL CANCELLATION POLICY
 const getCancellationPolicy = async (req, res) => {
-    try {
-        const { homestayId } = req.params;
+  try {
+    const { homestayId } = req.params;
 
-        // Validate homestayId
-        if (!homestayId) {
-            return res.status(400).json({
-                success: false,
-                message: "Homestay ID is required.",
-            });
-        }
-
-        // Fetch homestay and select only the cancellationPolicy field
-        const homestay = await Homestay.findById(homestayId).select("cancellationPolicy");
-
-        // If homestay does not exist or has no cancellation policy
-        if (!homestay) {
-            return res.status(404).json({
-                success: false,
-                message: "No homestay found with the given ID.",
-            });
-        }
-
-        if (!homestay.cancellationPolicy || homestay.cancellationPolicy.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No cancellation policy found for this homestay.",
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Cancellation policy retrieved successfully.",
-            data: homestay.cancellationPolicy, // Returns only the cancellation policy
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Server error while fetching cancellation policy.",
-            error: error.message,
-        });
+    // Validate homestayId
+    if (!homestayId) {
+      return res.status(400).json({
+        success: false,
+        message: "Homestay ID is required.",
+      });
     }
+
+    // Fetch homestay and select only the cancellationPolicy field
+    const homestay = await Homestay.findById(homestayId).select("cancellationPolicy");
+
+    // If homestay does not exist or has no cancellation policy
+    if (!homestay) {
+      return res.status(404).json({
+        success: false,
+        message: "No homestay found with the given ID.",
+      });
+    }
+
+    if (!homestay.cancellationPolicy || homestay.cancellationPolicy.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No cancellation policy found for this homestay.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cancellation policy retrieved successfully.",
+      data: homestay.cancellationPolicy, // Returns only the cancellation policy
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching cancellation policy.",
+      error: error.message,
+    });
+  }
 };
 
 module.exports = {
