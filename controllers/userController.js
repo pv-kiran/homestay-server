@@ -1070,7 +1070,7 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ userId: req.userId })
       .populate({
         path: 'homestayId', // Populate homestay details
-        select: 'title images address', // Fetch specific fields
+        select: 'title images address cancellationPolicy', // Fetch specific fields
       })
       .sort({ createdAt: -1 }); // Optional: Sort by latest bookings
 
@@ -1105,7 +1105,8 @@ const getUserBookings = async (req, res) => {
       isCancelled: booking?.isCancelled,
       homestayId: booking?.homestayId._id,
       refundId: booking?.refundId,
-      selectedItems: booking?.selectedItems
+      selectedItems: booking?.selectedItems,
+      cancelationPolicy: booking?.homestayId?.cancellationPolicy,
     }));
     res.status(200).json(bookingDetails);
   } catch (error) {
