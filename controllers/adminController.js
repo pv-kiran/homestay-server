@@ -2500,11 +2500,11 @@ const getIdProofMandatoryStatus = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: settings
-      ? {
+        ? {
           disclaimerNote: settings.disclaimerNote,
           isIdProofMandatory: settings.isIdProofMandatory
         }
-      : {},
+        : {},
     });
   } catch (error) {
     return res.status(500).json({
@@ -2528,6 +2528,8 @@ const updateCancellationPolicy = async (req, res) => {
 
     const { cancellationPolicy } = req.body;
 
+    console.log(cancellationPolicy);
+
     // Find and update homestay
     const updatedHomestay = await Homestay.findByIdAndUpdate(
       homestayId,
@@ -2545,11 +2547,12 @@ const updateCancellationPolicy = async (req, res) => {
       data: updatedHomestay.cancellationPolicy,
     });
   } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: "Server error while updating cancellation policy.",
-        error: error.message,
-      });
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating cancellation policy.",
+      error: error.message,
+    });
   }
 };
 
