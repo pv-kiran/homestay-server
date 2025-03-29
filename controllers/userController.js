@@ -1072,7 +1072,7 @@ const getUserBookings = async (req, res) => {
         path: 'homestayId', // Populate homestay details
         select: 'title images address cancellationPolicy', // Fetch specific fields
       })
-      .sort({ createdAt: -1 }); // Optional: Sort by latest bookings
+      .sort({ checkIn: -1 }); // Optional: Sort by latest bookings
 
     if (!bookings.length) {
       return res.status(404).json({ message: 'No bookings found for this user' });
@@ -1181,6 +1181,7 @@ const markAsCancelled = async (req, res) => {
   try {
     // First, find the booking without updating it
     const booking = await Booking.findById(bookingId)
+      .populate('homestayId');
 
     if (!booking) {
       return res.status(404).json({
@@ -1196,6 +1197,8 @@ const markAsCancelled = async (req, res) => {
         message: 'Booking is already cancelled'
       });
     }
+
+    console.log(booking?.homestayId?.cancellationPolicy, "Booking found")
 
     // Check if payment exists
     if (booking.paymentId && booking.orderId) {
