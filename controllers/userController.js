@@ -569,7 +569,6 @@ const getHomestayById = async (req, res) => {
     });
 
 
-    // console.log("Heeee")
 
 
 
@@ -599,13 +598,11 @@ const getHomestayById = async (req, res) => {
       service.amount = convertAmount(service.amount);
     });
 
-    console.log(homestay)
 
     // Return updated homestay data with converted currency
     return res.status(200).json({ success: true, data: homestay });
 
   } catch (error) {
-    console.log(error)
     return res.status(500).json({ success: false, message: "An error occurred while retrieving the homestay" });
   }
 };
@@ -714,9 +711,9 @@ const bookHomestay = async (req, res) => {
       return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100) : 0
     }
 
-    // const calculateGST = () => {
-    //   return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.gst) / 100) : 0;
-    // }
+    const calculateGST = () => {
+      return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.gst) / 100) : 0;
+    }
 
     let conversionRate = 1;
     if (currency && currency.code !== 'INR') {
@@ -747,10 +744,9 @@ const bookHomestay = async (req, res) => {
     }
 
 
-    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (homestay.pricePerNight * conversionRate) - discountAmount;
+    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (calculateGST() * conversionRate) + (homestay.pricePerNight * conversionRate) - discountAmount;
 
 
-    console.log(newPrice, "HHHHHH")
 
 
     const options = {
@@ -888,7 +884,6 @@ const bookHomestayComplete = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -1259,7 +1254,6 @@ const markAsCancelled = async (req, res) => {
 
 
       } catch (refundError) {
-        console.error('Refund failed:', refundError);
         return res.status(400).json({
           success: false,
           message: 'Failed to process refund',
@@ -1289,7 +1283,6 @@ const markAsCancelled = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Cancellation error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -1337,6 +1330,7 @@ const applyCoupon = async (req, res) => {
     const userId = req.userId;
     const { couponCode, homestayId, numberOfDays, currencyCode, insuranceAmount, addOnAmount, gst } = req.body;
 
+
     // Fetch coupon details
     const coupon = await Coupon.findOne({ code: couponCode });
     if (!coupon) {
@@ -1383,21 +1377,20 @@ const applyCoupon = async (req, res) => {
       }
     }
 
-    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + homestay?.pricePerNight + (gst * numberOfDays);
+    const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + (homestay?.pricePerNight * conversionRate) + (gst * numberOfDays);
 
-    console.log(convertedTotalPrice)
 
     // Calculate discount
     let discountAmount = 0;
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
-        console.log("Hellooooo max")
         discountAmount = Math.min(discountAmount, coupon.maxDiscount);
       }
     } else if (coupon.discountType === 'fixed') {
       discountAmount = coupon.discountValue * conversionRate;
     }
+
 
     const newPrice = convertedTotalPrice - discountAmount;
 
@@ -1600,7 +1593,6 @@ const generateReceipt = async (req, res) => {
 const updateIdProof = async (req, res) => {
   idUpload.single("idProof")(req, res, async (uploadError) => {
     if (uploadError) {
-      console.log(uploadError, "uploadError");
 
       return res.status(500).json({ message: "ID proof upload error" });
     }
