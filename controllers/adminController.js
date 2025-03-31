@@ -2265,13 +2265,17 @@ const getOtherService = async (req, res) => {
 
 const getAllServices = async (req, res) => {
   const { city } = req.query
+
+
   try {
     // Fetch all data in parallel
     const [restaurants, homelyFood, rides, otherServices, entertainment, roomService] = await Promise.all([
       Restaurant.find({
         city: city
       }),
-      HomelyFood.find(),
+      HomelyFood.find({
+        city: city
+      }),
       Rides.find(),
       OtherService.find(),
       Entertainment.find(),
@@ -2443,7 +2447,6 @@ const initiateRefund = async (req, res) => {
         });
 
       } catch (refundError) {
-        console.error('Refund failed:', refundError);
         return res.status(400).json({
           success: false,
           message: 'Failed to process refund',
@@ -2452,7 +2455,6 @@ const initiateRefund = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('Cancellation error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -2528,7 +2530,6 @@ const updateCancellationPolicy = async (req, res) => {
 
     const { cancellationPolicy } = req.body;
 
-    console.log(cancellationPolicy);
 
     // Find and update homestay
     const updatedHomestay = await Homestay.findByIdAndUpdate(
@@ -2547,7 +2548,6 @@ const updateCancellationPolicy = async (req, res) => {
       data: updatedHomestay.cancellationPolicy,
     });
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Server error while updating cancellation policy.",
