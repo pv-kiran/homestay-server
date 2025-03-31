@@ -138,6 +138,7 @@ const userOtpVerify = async (req, res) => {
             method: "email-otp",
             name: user?.fullName,
             isIdUploaded: user?.isIdUploaded,
+            role: 'user'
           },
           message: "Signed In",
         });
@@ -273,6 +274,7 @@ const googleSignIn = async (req, res) => {
         accountCreationStatus: user?.accountCreationStatus,
         method: "google-auth",
         isIdUploaded: user?.isIdUploaded,
+        role: 'user'
       },
       message: "Signed In",
     });
@@ -708,11 +710,11 @@ const bookHomestay = async (req, res) => {
     let amount = dailyRate * numDays;
 
     const calculateInsurance = () => {
-      return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.insuranceAmount) / 100) : 0
+      return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * Math.ceil(homestay?.insuranceAmount)) / 100) : 0
     }
 
     const calculateGST = () => {
-      return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * homestay?.gst) / 100) : 0;
+      return homestay?.gst ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * Math.ceil(homestay?.gst)) / 100) : 0;
     }
 
     let conversionRate = 1;
@@ -744,13 +746,16 @@ const bookHomestay = async (req, res) => {
     }
 
 
-    const newPrice = (Number(amount) + getTotalAddonPrice() + (calculateInsurance() * conversionRate)) + (calculateGST() * conversionRate) + (homestay.pricePerNight * conversionRate) - discountAmount;
+    const totalInsurance = calculateInsurance() * conversionRate
+    const totalGst = calculateGST() * conversionRate
+
+    const newPrice = Number(amount) + getTotalAddonPrice() + Math.ceil(totalInsurance) + Math.ceil(totalGst) + (homestay.pricePerNight * conversionRate) - discountAmount;
 
 
 
 
     const options = {
-      amount: newPrice.toFixed(2) * 100, // Amount in paise
+      amount: Math.ceil(newPrice) * 100, // Amount in paise
       currency: currency.code,
       receipt: `receipt_${Date.now()}`,
     };
@@ -771,6 +776,7 @@ const bookHomestay = async (req, res) => {
     });
 
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -1196,15 +1202,25 @@ const markAsCancelled = async (req, res) => {
     const diffInMs = booking?.checkIn - new Date();
     const diffInHours = diffInMs / (1000 * 60 * 60);
 
+
+
     let refundAmount = booking.amount;
 
+    console.log(booking?.homestayId?.cancellationPolicy?.length)
+    console.log(diffInHours)
+
     if (booking?.homestayId?.cancellationPolicy?.length > 0) {
-      const canceledRule = booking?.homestayId?.cancellationPolicy?.filter((item) => diffInHours <= item?.hoursBeforeCheckIn)
+      const canceledRule = booking?.homestayId?.cancellationPolicy?.filter((item) => item?.hoursBeforeCheckIn <= diffInHours)
+      console.log(canceledRule.sort((a, b) => a - b));
       if (canceledRule?.length > 0) {
-        refundAmount = (booking?.amount * canceledRule[0]?.canceledRule) / 100
+        refundAmount = (booking?.amount * canceledRule[0]?.refundPercentage) / 100
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Refund failed, no refund ID returned'
+        });
       }
     }
-
 
 
     // Check if payment exists
@@ -1214,12 +1230,13 @@ const markAsCancelled = async (req, res) => {
         const refund = await razorpay.payments.refund(booking.paymentId, {
           amount: refundAmount * 100, // Convert to paise
           notes: {
-            bookingId: bookingId,
+            bookingId: bookingId?._id,
             orderId: booking.orderId,
-            homestayId: booking.homestayId,
+            homestayId: booking.homestayId?._id,
             reason: 'Booking cancellation'
           }
         });
+
 
         if (!refund || !refund.id) {
           return res.status(400).json({
@@ -1263,9 +1280,8 @@ const markAsCancelled = async (req, res) => {
           }
         });
 
-
-
       } catch (refundError) {
+        console.log(refundError)
         return res.status(400).json({
           success: false,
           message: 'Failed to process refund',
