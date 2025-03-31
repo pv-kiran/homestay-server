@@ -727,6 +727,17 @@ const bookHomestay = async (req, res) => {
       }
     }
 
+
+
+
+
+
+    const totalInsurance = calculateInsurance() * conversionRate
+    const totalGst = calculateGST() * conversionRate
+
+    const newPrice = Number(amount) + getTotalAddonPrice() + Math.ceil(totalInsurance) + Math.ceil(totalGst) + (homestay.pricePerNight * conversionRate)
+
+
     let discountAmount = 0;
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
@@ -736,26 +747,24 @@ const bookHomestay = async (req, res) => {
 
 
       if (coupon.discountType === 'percentage') {
-        discountAmount = (amount * coupon.discountValue) / 100;
+        discountAmount = (newPrice * coupon.discountValue) / 100;
         if (coupon.maxDiscount !== null) {
-          discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+          discountAmount = Math.min(discountAmount, coupon.maxDiscount * conversionRate);
         }
       } else if (coupon.discountType === 'fixed') {
         discountAmount = coupon.discountValue * conversionRate;
       }
     }
 
+    const homeStayPrice = newPrice - discountAmount
 
-    const totalInsurance = calculateInsurance() * conversionRate
-    const totalGst = calculateGST() * conversionRate
 
-    const newPrice = Number(amount) + getTotalAddonPrice() + Math.ceil(totalInsurance) + Math.ceil(totalGst) + (homestay.pricePerNight * conversionRate) - discountAmount;
 
 
 
 
     const options = {
-      amount: Math.ceil(newPrice) * 100, // Amount in paise
+      amount: Math.ceil(homeStayPrice) * 100, // Amount in paise
       currency: currency.code,
       receipt: `receipt_${Date.now()}`,
     };
@@ -1413,7 +1422,8 @@ const applyCoupon = async (req, res) => {
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
-        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        console.log(discountAmount, coupon.maxDiscount);
+        discountAmount = Math.min(discountAmount, coupon.maxDiscount * conversionRate);
       }
     } else if (coupon.discountType === 'fixed') {
       discountAmount = coupon.discountValue * conversionRate;
