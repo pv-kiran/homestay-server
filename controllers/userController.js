@@ -750,7 +750,7 @@ const bookHomestay = async (req, res) => {
 
 
     const options = {
-      amount: Math.round(newPrice * 100), // Amount in paise
+      amount: newPrice.toFixed(2) * 100, // Amount in paise
       currency: currency.code,
       receipt: `receipt_${Date.now()}`,
     };
@@ -1193,14 +1193,26 @@ const markAsCancelled = async (req, res) => {
       });
     }
 
-    console.log(booking?.homestayId?.cancellationPolicy, "Booking found")
+    const diffInMs = booking?.checkIn - new Date();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+
+    let refundAmount = booking.amount;
+
+    if (booking?.homestayId?.cancellationPolicy?.length > 0) {
+      const canceledRule = booking?.homestayId?.cancellationPolicy?.filter((item) => diffInHours <= item?.hoursBeforeCheckIn)
+      if (canceledRule?.length > 0) {
+        refundAmount = (booking?.amount * canceledRule[0]?.canceledRule) / 100
+      }
+    }
+
+
 
     // Check if payment exists
     if (booking.paymentId && booking.orderId) {
       try {
         // Process refund through Razorpay
         const refund = await razorpay.payments.refund(booking.paymentId, {
-          amount: booking.amount * 100, // Convert to paise
+          amount: refundAmount * 100, // Convert to paise
           notes: {
             bookingId: bookingId,
             orderId: booking.orderId,
