@@ -785,7 +785,6 @@ const bookHomestay = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
