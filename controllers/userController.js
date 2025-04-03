@@ -785,7 +785,6 @@ const bookHomestay = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error)
     return res.status(500).json({
       success: false,
       message: 'An error occurred while processing the booking.',
@@ -837,30 +836,30 @@ const bookHomestayComplete = async (req, res) => {
     // const numDays = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     // let amount = dailyRate * numDays;
 
-
+    let price = 0
     let conversionRate = 1;
-    if (currency && currency !== 'INR') {
+    if (currency && currency.code !== 'INR') {
       try {
         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/${currency.code}/INR`);
         conversionRate = data?.conversion_rate;
-        amount = (amount * data?.conversion_rate).toFixed(2)
+        price = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
       }
     }
 
     let updatedSelectedItems = convertPricesToINR(addOns, conversionRate)
 
-
     const newBooking = new Booking({
       userId: req.userId,
       homestayId,
       checkIn: checkInDate,
       checkOut: checkOutDate,
-      amount: amount / 100,
+      amount: price / 100,
       orderId,
       paymentId,
       selectedItems: updatedSelectedItems,
-      guests
+      guests,
+      price: amount / 100
     });
 
     await newBooking.save();

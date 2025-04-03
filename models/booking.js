@@ -139,7 +139,11 @@ const bookingSchema = new mongoose.Schema({
     guests: {
         type: Number,
         required: true,
-    }
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
