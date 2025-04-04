@@ -845,6 +845,8 @@ const bookHomestayComplete = async (req, res) => {
         price = (amount * data?.conversion_rate).toFixed(2)
       } catch (conversionError) {
       }
+    } else {
+      price = amount;
     }
 
     let updatedSelectedItems = convertPricesToINR(addOns, conversionRate)
