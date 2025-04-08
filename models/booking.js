@@ -119,6 +119,10 @@ const bookingSchema = new mongoose.Schema({
         type: selectedItemsSchema,
         required: true,
     },
+    addOns: {
+        type: selectedItemsSchema,
+        required: true,
+    },
     cancelledAt: {
         type: Date
     },

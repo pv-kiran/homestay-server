@@ -861,7 +861,8 @@ const bookHomestayComplete = async (req, res) => {
       paymentId,
       selectedItems: updatedSelectedItems,
       guests,
-      price: amount / 100
+      price: amount / 100,
+      addOns: addOns
     });
 
     await newBooking.save();
@@ -1045,7 +1046,7 @@ const getValidCoupons = async (req, res) => {
         const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
         conversionRate = data?.conversion_rate;
       } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
+        // console.error('Currency conversion error:', conversionError);
       }
     }
 
@@ -1075,7 +1076,7 @@ const getValidCoupons = async (req, res) => {
 }
 
 const getUserBookings = async (req, res) => {
-  const { currency } = req.query;
+  // const { currency } = req.query;
   try {
     // Fetch bookings for the given user and populate homestay details
     const bookings = await Booking.find({ userId: req.userId })
@@ -1089,15 +1090,15 @@ const getUserBookings = async (req, res) => {
       return res.status(404).json({ message: 'No bookings found for this user' });
     }
 
-    let conversionRate = 1;
-    if (currency && currency !== 'INR') {
-      try {
-        const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
-        conversionRate = data?.conversion_rate;
-      } catch (conversionError) {
-        console.error('Currency conversion error:', conversionError);
-      }
-    }
+    // let conversionRate = 1;
+    // if (currency && currency !== 'INR') {
+    //   try {
+    //     const { data } = await axios.get(`https://v6.exchangerate-api.com/v6/f33778d07ad0d3ffe8f9b95a/pair/INR/${currency}`);
+    //     conversionRate = data?.conversion_rate;
+    //   } catch (conversionError) {
+    //     console.error('Currency conversion error:', conversionError);
+    //   }
+    // }
 
 
     // Transform bookings into desired format
@@ -1106,7 +1107,7 @@ const getUserBookings = async (req, res) => {
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       paymentId: booking.paymentId,
-      amount: Math.round(booking.amount * conversionRate),
+      amount: booking?.price,
       createdAt: booking.createdAt,
       homestayName: booking.homestayId?.title || 'Unknown Homestay',
       homestayImage: booking.homestayId?.images?.[0] || null,
@@ -1116,7 +1117,7 @@ const getUserBookings = async (req, res) => {
       isCancelled: booking?.isCancelled,
       homestayId: booking?.homestayId._id,
       refundId: booking?.refundId,
-      selectedItems: booking?.selectedItems,
+      selectedItems: booking?.addOns,
       cancelationPolicy: booking?.homestayId?.cancellationPolicy,
     }));
     res.status(200).json(bookingDetails);
@@ -1212,16 +1213,10 @@ const markAsCancelled = async (req, res) => {
     const diffInMs = booking?.checkIn - new Date();
     const diffInHours = diffInMs / (1000 * 60 * 60);
 
-
-
     let refundAmount = booking.amount;
-
-    console.log(booking?.homestayId?.cancellationPolicy?.length)
-    console.log(diffInHours)
 
     if (booking?.homestayId?.cancellationPolicy?.length > 0) {
       const canceledRule = booking?.homestayId?.cancellationPolicy?.filter((item) => item?.hoursBeforeCheckIn <= diffInHours)
-      console.log(canceledRule.sort((a, b) => a - b));
       if (canceledRule?.length > 0) {
         refundAmount = (booking?.amount * canceledRule[0]?.refundPercentage) / 100
       } else {
@@ -1291,7 +1286,6 @@ const markAsCancelled = async (req, res) => {
         });
 
       } catch (refundError) {
-        console.log(refundError)
         return res.status(400).json({
           success: false,
           message: 'Failed to process refund',
@@ -1423,7 +1417,6 @@ const applyCoupon = async (req, res) => {
     if (coupon.discountType === 'percentage') {
       discountAmount = (convertedTotalPrice * coupon.discountValue) / 100;
       if (coupon.maxDiscount) {
-        console.log(discountAmount, coupon.maxDiscount);
         discountAmount = Math.min(discountAmount, coupon.maxDiscount * conversionRate);
       }
     } else if (coupon.discountType === 'fixed') {

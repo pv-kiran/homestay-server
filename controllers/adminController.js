@@ -1241,7 +1241,7 @@ const getAllBookings = async (req, res) => {
     const totalBookings = await Booking.countDocuments(searchQuery);
 
     // Fetch paginated bookings with populated homestay details
-    const bookings = await Booking.find(searchQuery)
+    const bookings = await Booking.find(searchQuery).sort({ checkIn: -1 })
       .populate({
         path: "userId",
         select: "fullName email",
@@ -2368,7 +2368,7 @@ const sendCheckInReminders = async () => {
     // }
 
   } catch (error) {
-    console.error('Error in cron job:', error);
+    // console.error('Error in cron job:', error);
   }
 };
 
