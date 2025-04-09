@@ -133,7 +133,7 @@ const generateLocationRevealTemplate = (booking) => {
             </div>
             <div class="content">
             <p>Dear ${booking?.userId?.fullName},</p>
-            <p>Great news! As your booking is successfull, we're excited to reveal the exact location of your homestay.</p>
+            <p>Great news! As your booking is successful, we're excited to reveal the exact location of your homestay.</p>
             
             <div class="location-card">
                 <div class="location-title">

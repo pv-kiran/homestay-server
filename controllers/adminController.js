@@ -1658,20 +1658,20 @@ const addHomelyFood = async (req, res) => {
     // Check if the restaurant name already exists
     const existingHomelyFood = await HomelyFood.findOne({ homelyFoodCenterName: req?.body?.homelyFoodCenterName });
     if (existingHomelyFood) {
-      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+      return res.status(400).json({ error: 'Homely food center with this name already exists' });
     }
 
     // Create new restaurant instance and save
     const newHomelyFood = new HomelyFood(req.body);
     await newHomelyFood.save();
-    res.status(201).json({ message: 'Restaurant added successfully', homelyFoodCenter: newHomelyFood });
+    res.status(201).json({ message: 'Homely food center added successfully', homelyFoodCenter: newHomelyFood });
 
   } catch (err) {
     // Handling duplicate key error from MongoDB unique index
     if (err.code === 11000) {
-      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+      return res.status(400).json({ error: 'Homely food center with this name already exists' });
     }
-    res.status(500).json({ error: 'Error adding restaurant', details: err.message });
+    res.status(500).json({ error: 'Error adding homely food center', details: err.message });
   }
 }
 
@@ -1738,7 +1738,7 @@ const updateHomelyFood = async (req, res) => {
     // Check if the restaurant exists
     const existingHomelyFood = await HomelyFood.findById(id);
     if (!existingHomelyFood) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ error: 'Homely food center not found' });
     }
 
     // Check if the updated name already exists for another restaurant
@@ -1748,7 +1748,7 @@ const updateHomelyFood = async (req, res) => {
         _id: { $ne: id }, // Exclude the current restaurant from the search
       });
       if (duplicateRestaurant) {
-        return res.status(400).json({ error: 'Homely food with this name already exists' });
+        return res.status(400).json({ error: 'Homely food center with this name already exists' });
       }
     }
 
@@ -1756,14 +1756,14 @@ const updateHomelyFood = async (req, res) => {
     Object.assign(existingHomelyFood, req.body); // Merge updates into the existing restaurant
     await existingHomelyFood.save();
 
-    res.status(200).json({ message: 'Restaurant updated successfully', restaurant: existingHomelyFood });
+    res.status(200).json({ message: 'Homely food center updated successfully', restaurant: existingHomelyFood });
 
   } catch (err) {
     // Handling duplicate key error from MongoDB unique index
     if (err.code === 11000) {
-      return res.status(400).json({ error: 'Restaurant with this name already exists' });
+      return res.status(400).json({ error: 'Homely food center with this name already exists' });
     }
-    res.status(500).json({ error: 'Error updating restaurant', details: err.message });
+    res.status(500).json({ error: 'Error updating homely food center', details: err.message });
   }
 };
 
@@ -1915,7 +1915,7 @@ const addRides = async (req, res) => {
     await newRoomService.save();
     res.status(201).json({
       success: true,
-      message: "Room service created successfully",
+      message: "Service created successfully",
       roomService: newRoomService,
     });
   } catch (error) {
@@ -1942,7 +1942,7 @@ const updateRides = async (req, res) => {
     if (existingAmenity) {
       return res
         .status(400)
-        .json({ message: "Room service with this name already exists" });
+        .json({ message: "Service with this name already exists" });
     }
 
     // Update the amenity
@@ -1962,7 +1962,7 @@ const updateRides = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Amenity updated successfully",
+      message: "Service updated successfully",
       service: updatedRoomService,
     });
   } catch (error) {
@@ -2024,7 +2024,7 @@ const addEntertainment = async (req, res) => {
     if (existingRoomService) {
       return res
         .status(400)
-        .json({ message: "Service with this name already exists" });
+        .json({ message: "Entertainment service with this name already exists" });
     }
 
     const newRoomService = new Entertainment({
@@ -2036,7 +2036,7 @@ const addEntertainment = async (req, res) => {
     await newRoomService.save();
     res.status(201).json({
       success: true,
-      message: "Room service created successfully",
+      message: "Entertainment service created successfully",
       roomService: newRoomService,
     });
   } catch (error) {
@@ -2068,7 +2068,7 @@ const updateEntertainment = async (req, res) => {
     if (existingAmenity) {
       return res
         .status(400)
-        .json({ message: "Room service with this name already exists" });
+        .json({ message: "Entertainment service with this name already exists" });
     }
 
     // Update the amenity
@@ -2083,12 +2083,12 @@ const updateEntertainment = async (req, res) => {
     );
 
     if (!updatedRoomService) {
-      return res.status(404).json({ message: "Service not found" });
+      return res.status(404).json({ message: "Entertainment service not found" });
     }
 
     res.status(200).json({
       success: true,
-      message: "Amenity updated successfully",
+      message: "Entertainment service updated successfully",
       service: updatedRoomService,
     });
   } catch (error) {
@@ -2161,7 +2161,7 @@ const addOtherService = async (req, res) => {
     await newRoomService.save();
     res.status(201).json({
       success: true,
-      message: "Room service created successfully",
+      message: "Service created successfully",
       roomService: newRoomService,
     });
   } catch (error) {
@@ -2193,7 +2193,7 @@ const updateOtherService = async (req, res) => {
     if (existingAmenity) {
       return res
         .status(400)
-        .json({ message: "Room service with this name already exists" });
+        .json({ message: "Service with this name already exists" });
     }
 
     // Update the amenity
@@ -2213,7 +2213,7 @@ const updateOtherService = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Amenity updated successfully",
+      message: "Service updated successfully",
       service: updatedRoomService,
     });
   } catch (error) {
@@ -2438,7 +2438,7 @@ const initiateRefund = async (req, res) => {
 
         return res.status(200).json({
           success: true,
-          message: 'Refunding is processed',
+          message: 'Refunding initiated',
           booking: updatedBooking,
           refund: {
             id: refund.id,
