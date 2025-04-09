@@ -1146,7 +1146,7 @@ const markAsCheckedIn = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Checked in successfully',
+      message: 'Check-in successful',
       booking
     });
   } catch (error) {
@@ -1176,7 +1176,7 @@ const markAsCheckedOut = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Checked out successfully',
+      message: 'Check-out successful',
       booking
     });
   } catch (error) {
