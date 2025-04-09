@@ -42,9 +42,9 @@ router.post("/auth/google/signin", googleSignIn);
 router.put("/account/setup/complete/:userId", userAccountCreation);
 router.get("/auth/signout", userLogout);
 router.post("/auth/update-profile", authenticateToken, updateUserData);
-router.get("/auth/view-profile", authenticateToken, getUserById);
+router.get("/auth/view-profile", authenticateToken, isUser, getUserById);
 router.put("/auth/update-propic", authenticateToken, updateProPic);
-router.get("/auth/view-profile", authenticateToken, getUserById)
+// router.get("/auth/view-profile", authenticateToken, getUserById)
 router.post("/auth/upload-idproof", authenticateToken, updateIdProof);
 
 router.post("/get-allhomestays", getAllHomestays);
@@ -63,7 +63,7 @@ router.patch('/homestay/cancel/:bookingId', authenticateToken, isUser, markAsCan
 
 router.get('/homestay/booking/:homeStayId/status', authenticateToken, isUser, checkFutureBooking);
 
-router.get("/get-coupons", authenticateToken, isUser, getValidCoupons);
+router.get("/get-coupons", getValidCoupons);
 router.post("/apply-coupon", authenticateToken, isUser, applyCoupon);
 router.get("/get-latestcoupon", getLatestValidCoupon);
 
@@ -72,7 +72,7 @@ router.get("/test/:homeStayId", getReviewsByHomestay);
 
 router.get("/download-receipt/:bookingId", authenticateToken, isUser, generateReceipt);
 
-router.get("/get-idstatus", authenticateToken, getIdProofStatus);
+router.get("/get-idstatus", authenticateToken, isUser, getIdProofStatus);
 router.get("/get-cancellation-policy/:homestayId", getCancellationPolicy);
 
 router.post("/contact-us", contactUs);

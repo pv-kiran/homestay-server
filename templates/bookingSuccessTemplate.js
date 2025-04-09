@@ -13,7 +13,7 @@ const createGoogleMapsLink = (latitude, longitude) => {
     return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
-const generateBookingSuccessTemplate = (booking) => {
+const generateBookingSuccessTemplate = (booking, currency) => {
     return `<!DOCTYPE html>
     <html>
     <head>
@@ -177,7 +177,13 @@ const generateBookingSuccessTemplate = (booking) => {
                         <span class="detail-value">${booking?.guests}</span>
                     </div>
                     <div class="total">
-                        Total Amount: $${booking?.amount}
+                        Total Amount: 
+                        <span>
+                        ${currency?.symbol} 
+                        </span>
+                        <span>
+                        ${booking?.amount} 
+                        </span>
                     </div>
                 </div>
 

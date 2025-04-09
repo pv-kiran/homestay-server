@@ -882,7 +882,7 @@ const bookHomestayComplete = async (req, res) => {
       from: "admin@gmail.com",
       to: `${populatedData?.userId?.email}`,
       subject: "Booking Confirmation",
-      html: generateBookingSuccessTemplate(populatedData),
+      html: generateBookingSuccessTemplate(populatedData, currency?.code),
     };
 
     await transporter.sendMail(mailOptions);
@@ -943,7 +943,7 @@ const updateUserData = async (req, res) => {
     }
 
     const userId = req.userId;
-    const { address, phone, gender } = req.body;
+    const { address, phone, gender, dob } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -953,13 +953,14 @@ const updateUserData = async (req, res) => {
     if (address) user.address = address;
     if (phone) user.phone = phone;
     if (gender) user.gender = gender;
+    if (dob) user.dob = dob;
 
     const updatedUser = await user.save();
 
     return res.status(200).json({
       success: true,
       message: "User updated successfully",
-      // data: updatedUser,
+      data: updatedUser,
     });
 
   } catch (error) {

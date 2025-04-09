@@ -8,8 +8,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    otp : {
-        type: Number 
+    otp: {
+        type: Number
     },
     otpExpiry: {
         type: Date
@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
         default: false
     },
     dob: {
-        type: Date
+        type: Number
     },
     accountCreationStatus: {
         type: Boolean,
@@ -60,24 +60,24 @@ const userSchema = new mongoose.Schema({
         // required: true,
     },
     gender: {
-        type: String, 
-        enum: ["Male", "Female", "Other"], 
+        type: String,
+        enum: ["Male", "Female", "Other"],
         // required: true, 
     },
     profilePic: {
         type: String,
     },
-    idProof: { 
+    idProof: {
         type: String,
     },
-    isIdUploaded: {  
+    isIdUploaded: {
         type: Boolean,
         default: false,
     }
 },
-{
-    timestamps: true,  
-})
+    {
+        timestamps: true,
+    })
 
 
 module.exports = mongoose.model('User', userSchema);

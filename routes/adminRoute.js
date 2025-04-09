@@ -60,7 +60,7 @@ const {
   updateIdProofControl,
   updateCancellationPolicy,
 } = require("../controllers/adminController");
-const { authenticateToken } = require("../middleware/authMiddleware");
+const { authenticateToken, isAdmin } = require("../middleware/authMiddleware");
 
 // router.post('/admin/add-homestay',homestayUpload.fields([
 //     { name: 'images', maxCount: 5 },
@@ -82,76 +82,77 @@ router.post("/auth/otp/verify", adminOtpVerify);
 router.post("/auth/signin", adminLogin);
 router.post("/auth/otp/resend", adminResendOtp);
 router.post("/auth/logout", adminLogout);
-router.post("/add-category", addCategory);
-router.put("/edit-category/:categoryId", updateCategory);
-router.put("/toggle-category/:categoryId", toggleCategoryStatus);
-router.post("/get-allcategories", getAllCategories);
-router.post("/add-amenities", addAmenities);
-router.put("/edit-amenity/:amenityId", updateAmenity);
-router.put("/toggle-amenity/:amenityId", toggleAmenityStatus);
-router.post("/get-allamenities", getAllAmenities);
+router.post("/add-category", authenticateToken, isAdmin, addCategory);
+router.put("/edit-category/:categoryId", authenticateToken, isAdmin, updateCategory);
+router.put("/toggle-category/:categoryId", authenticateToken, isAdmin, toggleCategoryStatus);
+router.post("/get-allcategories", authenticateToken, isAdmin, getAllCategories);
+router.post("/add-amenities", authenticateToken, isAdmin, addAmenities);
+router.put("/edit-amenity/:amenityId", authenticateToken, isAdmin, updateAmenity);
+router.put("/toggle-amenity/:amenityId", authenticateToken, isAdmin, toggleAmenityStatus);
+router.post("/get-allamenities", authenticateToken, isAdmin, getAllAmenities);
 
-router.post("/add-homestay", homestayUpload.fields(fields), addHomestay);
+router.post("/add-homestay", authenticateToken, isAdmin, homestayUpload.fields(fields), addHomestay);
 router.put(
   "/update-homestay/:homestayId",
+  authenticateToken, isAdmin,
   homestayUpload.fields(fields),
   updateHomestay
 );
-router.put("/toggle-homestay/:homestayId", toggleHomestayStatus);
-router.get("/get-homestay/:homestayId", getHomestayById);
+router.put("/toggle-homestay/:homestayId", authenticateToken, isAdmin, toggleHomestayStatus);
+router.get("/get-homestay/:homestayId", authenticateToken, isAdmin, getHomestayById);
 router.post("/get-allhomestays", getAllHomestays);
 
-router.post("/get-allusers", getAllUsers);
-router.get("/get-user/:userId", getUserById);
-router.put("/toggle-user/:userId", toggleUserStatus);
-router.post("/get-allbookings", getAllBookings);
-router.put("/homestay/:id/images", reorderImages);
+router.post("/get-allusers", authenticateToken, isAdmin, getAllUsers);
+router.get("/get-user/:userId", authenticateToken, isAdmin, getUserById);
+router.put("/toggle-user/:userId", authenticateToken, isAdmin, toggleUserStatus);
+router.post("/get-allbookings", authenticateToken, isAdmin, getAllBookings);
+router.put("/homestay/:id/images", authenticateToken, isAdmin, reorderImages);
 
-router.post("/add-coupon", createCoupon);
-router.put("/update-coupon/:id", updateCoupon);
-router.put("/toggle-coupon/:id", toggleCouponStatus);
+router.post("/add-coupon", authenticateToken, isAdmin, createCoupon);
+router.put("/update-coupon/:id", authenticateToken, isAdmin, updateCoupon);
+router.put("/toggle-coupon/:id", authenticateToken, isAdmin, toggleCouponStatus);
 router.post("/get-allcoupons", getAllCoupons);
 
-router.get("/month/report", getMonthlyReport);
-router.get("/yearly/report", getYearlyReport);
-router.get("/homestay/report", getHomeStaywiseReport);
-router.get("/category/report", getCategoryWiseReport);
-router.get("/overall/report", getOverallReport);
+router.get("/month/report", authenticateToken, isAdmin, getMonthlyReport);
+router.get("/yearly/report", authenticateToken, isAdmin, getYearlyReport);
+router.get("/homestay/report", authenticateToken, isAdmin, getHomeStaywiseReport);
+router.get("/category/report", authenticateToken, isAdmin, getCategoryWiseReport);
+router.get("/overall/report", authenticateToken, isAdmin, getOverallReport);
 
 
-router.post("/add-restaurent", addRestaurent);
-router.post("/get-restaurents", getAllRestaurants);
-router.put('/restaurant/:id', updateRestaurant);
+router.post("/add-restaurent", authenticateToken, isAdmin, addRestaurent);
+router.post("/get-restaurents", authenticateToken, isAdmin, getAllRestaurants);
+router.put('/restaurant/:id', authenticateToken, isAdmin, updateRestaurant);
 
-router.post("/add-homelyfood", addHomelyFood);
-router.post("/get-homelyfoods", getAllHomelyFood);
-router.put('/homelyfood/:id', updateHomelyFood);
-
-
-router.post("/add-roomservice", addRoomService);
-router.post("/get-roomservice", getRoomServices);
-router.put('/roomservice/:id', updateRoomService);
-
-router.post("/add-rides", addRides);
-router.post("/get-rides", getRides);
-router.put('/ride/:id', updateRides);
+router.post("/add-homelyfood", authenticateToken, isAdmin, addHomelyFood);
+router.post("/get-homelyfoods", authenticateToken, isAdmin, getAllHomelyFood);
+router.put('/homelyfood/:id', authenticateToken, isAdmin, updateHomelyFood);
 
 
-router.post("/add-entertainment", addEntertainment);
-router.post("/get-entertainment", getEntertainment);
-router.put('/entertainment/:id', updateEntertainment);
+router.post("/add-roomservice", authenticateToken, isAdmin, addRoomService);
+router.post("/get-roomservice", authenticateToken, isAdmin, getRoomServices);
+router.put('/roomservice/:id', authenticateToken, isAdmin, updateRoomService);
 
-router.post("/add-otherservice", addOtherService);
-router.post("/get-otherservice", getOtherService);
-router.put('/otherservice/:id', updateOtherService);
+router.post("/add-rides", authenticateToken, isAdmin, addRides);
+router.post("/get-rides", authenticateToken, isAdmin, getRides);
+router.put('/ride/:id', authenticateToken, isAdmin, updateRides);
 
-router.get("/homestay/allservice", getAllServices);
-router.put("/homestay/allservice/:id", updateHomeStayAddOns);
-router.put("/booking/refund/:id", initiateRefund);
 
-router.put("/update-idcontrol", updateIdProofControl);
-router.get("/get-idstatus", getIdProofMandatoryStatus);
+router.post("/add-entertainment", authenticateToken, isAdmin, addEntertainment);
+router.post("/get-entertainment", authenticateToken, isAdmin, getEntertainment);
+router.put('/entertainment/:id', authenticateToken, isAdmin, updateEntertainment);
 
-router.put("/cancellation-policy/:homestayId", updateCancellationPolicy);
+router.post("/add-otherservice", authenticateToken, isAdmin, addOtherService);
+router.post("/get-otherservice", authenticateToken, isAdmin, getOtherService);
+router.put('/otherservice/:id', authenticateToken, isAdmin, updateOtherService);
+
+router.get("/homestay/allservice", authenticateToken, isAdmin, getAllServices);
+router.put("/homestay/allservice/:id", authenticateToken, isAdmin, updateHomeStayAddOns);
+router.put("/booking/refund/:id", authenticateToken, isAdmin, initiateRefund);
+
+router.put("/update-idcontrol", authenticateToken, isAdmin, updateIdProofControl);
+router.get("/get-idstatus", authenticateToken, isAdmin, getIdProofMandatoryStatus);
+
+router.put("/cancellation-policy/:homestayId", authenticateToken, isAdmin, updateCancellationPolicy);
 
 module.exports = router;
