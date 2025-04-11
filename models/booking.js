@@ -148,6 +148,10 @@ const bookingSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    currency: {
+        type: String,
+        required: true,
+    },
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

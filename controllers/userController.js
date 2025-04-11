@@ -710,7 +710,7 @@ const bookHomestay = async (req, res) => {
     let amount = dailyRate * numDays;
 
     const calculateInsurance = () => {
-      return homestay?.insuranceAmount ? Math.ceil(((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * Math.ceil(homestay?.insuranceAmount)) / 100) : 0
+      return homestay?.insuranceAmount ? (((dailyRate * (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) * (homestay?.insuranceAmount)) / 100) : 0
     }
 
     const calculateGST = () => {
@@ -727,15 +727,11 @@ const bookHomestay = async (req, res) => {
       }
     }
 
-
-
-
-
-
     const totalInsurance = calculateInsurance() * conversionRate
     const totalGst = calculateGST() * conversionRate
 
     const newPrice = Number(amount) + getTotalAddonPrice() + Math.ceil(totalInsurance) + Math.ceil(totalGst) + (homestay.pricePerNight * conversionRate)
+
 
 
     let discountAmount = 0;
@@ -756,11 +752,9 @@ const bookHomestay = async (req, res) => {
       }
     }
 
-    const homeStayPrice = newPrice - discountAmount
 
 
-
-
+    const homeStayPrice = Math.ceil(newPrice) - discountAmount
 
 
     const options = {
@@ -781,7 +775,7 @@ const bookHomestay = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Room booking initiated.',
-      data: razorpayOrder
+      data: razorpayOrder,
     });
 
   } catch (error) {
@@ -862,8 +856,11 @@ const bookHomestayComplete = async (req, res) => {
       selectedItems: updatedSelectedItems,
       guests,
       price: amount / 100,
-      addOns: addOns
+      addOns: addOns,
+      currency: currency.code,
     });
+
+
 
     await newBooking.save();
 
@@ -876,6 +873,8 @@ const bookHomestayComplete = async (req, res) => {
         path: 'userId',
         select: 'fullName email', // Select the 'fullName' field from User
       });
+
+
 
 
     const mailOptions = {
@@ -1120,6 +1119,7 @@ const getUserBookings = async (req, res) => {
       refundId: booking?.refundId,
       selectedItems: booking?.addOns,
       cancelationPolicy: booking?.homestayId?.cancellationPolicy,
+      currency: booking?.currency
     }));
     res.status(200).json(bookingDetails);
   } catch (error) {
@@ -1409,6 +1409,9 @@ const applyCoupon = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Currency conversion failed.' });
       }
     }
+
+
+
 
     const convertedTotalPrice = (totalPrice * conversionRate) + (insuranceAmount * numberOfDays) + addOnAmount + (homestay?.pricePerNight * conversionRate) + (gst * numberOfDays);
 
