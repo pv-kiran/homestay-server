@@ -315,6 +315,7 @@ const validateUserUpdate = Joi.object({
   }),
   phone: Joi.string().pattern(/^\d{10}$/).required(),
   gender: Joi.string().valid("Male", "Female", "Other").required(),
+  dob: Joi.number().required(),
 });
 
 const validateCreateCoupon = Joi.object({

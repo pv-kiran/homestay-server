@@ -1220,28 +1220,133 @@ const getAllCoupons = async (req, res) => {
 }
 
 
+// const getAllBookings = async (req, res) => {
+//   try {
+//     const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
+
+//     // Build the search query
+//     const searchQuery = searchParams
+//       ? {
+//         $or: [
+//           { paymentId: { $regex: searchParams, $options: "i" } },
+//           { orderId: { $regex: searchParams, $options: "i" } }
+//         ],
+//       }
+//       : {};
+
+//     // Calculate skip and limit for pagination
+//     const skip = (pageNumber - 1) * pagePerData;
+
+//     // Total number of bookings matching the search
+//     const totalBookings = await Booking.countDocuments(searchQuery);
+
+//     // Fetch paginated bookings with populated homestay details
+//     const bookings = await Booking.sort({ checkIn: -1 })
+//       .populate({
+//         path: "userId",
+//         select: "fullName email",
+//       })
+//       .populate({
+//         path: "homestayId",
+//         select: "title images address",
+//       })
+//       .skip(skip)
+//       .limit(parseInt(pagePerData))
+//       .sort({ createdAt: -1 }); // Sort by creation date, latest first
+
+//     // Check if no bookings were found
+//     if (!bookings.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No bookings found",
+//       });
+//     }
+
+//     // Transform bookings into desired format
+//     const bookingDetails = bookings.map((booking) => ({
+//       _id: booking._id,
+//       checkIn: booking.checkIn,
+//       checkOut: booking.checkOut,
+//       paymentId: booking.paymentId,
+//       orderId: booking?.orderId,
+//       amount: booking.amount,
+//       createdAt: booking.createdAt,
+//       homestayName: booking.homestayId?.title || "Unknown Homestay",
+//       homestayImage: booking.homestayId?.images?.[0] || null,
+//       homestayAddress: booking.homestayId?.address || null,
+//       isCheckedIn: booking.isCheckedIn,
+//       isCheckedOut: booking.isCheckedOut,
+//       isCancelled: booking.isCancelled,
+//       userName: booking?.userId?.fullName,
+//       addOns: booking?.selectedItems,
+//       refundId: booking?.refundId,
+//       isRefunded: booking?.isRefunded,
+//       refundedAt: booking?.refundedAt
+//     }));
+
+//     // Respond with transformed bookings and pagination details
+//     return res.status(200).json({
+//       success: true,
+//       data: bookingDetails,
+//       totalBookings,
+//       totalPages: Math.ceil(totalBookings / pagePerData),
+//       currentPage: pageNumber,
+//       pageSize: pagePerData,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while retrieving coupons"
+//     })
+//   }
+// };
+
+
 const getAllBookings = async (req, res) => {
   try {
     const { pagePerData = 10, pageNumber = 1, searchParams = "" } = req.body;
 
-    // Build the search query
-    const searchQuery = searchParams
+    // Calculate skip for pagination
+    const skip = (pageNumber - 1) * pagePerData;
+
+    // First, find all bookings that match direct fields
+    const directMatchQuery = searchParams
       ? {
         $or: [
           { paymentId: { $regex: searchParams, $options: "i" } },
-          { orderId: { $regex: searchParams, $options: "i" } },
+          { orderId: { $regex: searchParams, $options: "i" } }
         ],
       }
       : {};
 
-    // Calculate skip and limit for pagination
-    const skip = (pageNumber - 1) * pagePerData;
+    // Find all user IDs that match the search term
+    const matchingUsers = searchParams
+      ? await User.find({ fullName: { $regex: searchParams, $options: "i" } }).select('_id')
+      : [];
 
-    // Total number of bookings matching the search
-    const totalBookings = await Booking.countDocuments(searchQuery);
+    // Find all homestay IDs that match the search term
+    const matchingHomestays = searchParams
+      ? await Homestay.find({ title: { $regex: searchParams, $options: "i" } }).select('_id')
+      : [];
 
-    // Fetch paginated bookings with populated homestay details
-    const bookings = await Booking.find(searchQuery).sort({ checkIn: -1 })
+    // Combine all the search criteria
+    let finalQuery = directMatchQuery;
+
+    if (searchParams && (matchingUsers.length > 0 || matchingHomestays.length > 0)) {
+      finalQuery = {
+        $or: [
+          ...directMatchQuery.$or || [],
+          matchingUsers.length > 0 ? { userId: { $in: matchingUsers.map(u => u._id) } } : null,
+          matchingHomestays.length > 0 ? { homestayId: { $in: matchingHomestays.map(h => h._id) } } : null
+        ].filter(Boolean)
+      };
+    }
+
+    // Count total matching documents
+    const totalBookings = await Booking.countDocuments(finalQuery);
+
+    // Fetch bookings with your original query pattern but using our enhanced search
+    const bookings = await Booking.find(finalQuery)
       .populate({
         path: "userId",
         select: "fullName email",
@@ -1252,7 +1357,7 @@ const getAllBookings = async (req, res) => {
       })
       .skip(skip)
       .limit(parseInt(pagePerData))
-      .sort({ createdAt: -1 }); // Sort by creation date, latest first
+      .sort({ checkIn: -1 });
 
     // Check if no bookings were found
     if (!bookings.length) {
@@ -1262,7 +1367,7 @@ const getAllBookings = async (req, res) => {
       });
     }
 
-    // Transform bookings into desired format
+    // Transform bookings using your exact original transformation
     const bookingDetails = bookings.map((booking) => ({
       _id: booking._id,
       checkIn: booking.checkIn,
@@ -1284,7 +1389,7 @@ const getAllBookings = async (req, res) => {
       refundedAt: booking?.refundedAt
     }));
 
-    // Respond with transformed bookings and pagination details
+    // Return response using your exact original structure
     return res.status(200).json({
       success: true,
       data: bookingDetails,
@@ -1293,11 +1398,13 @@ const getAllBookings = async (req, res) => {
       currentPage: pageNumber,
       pageSize: pagePerData,
     });
+
   } catch (error) {
+    console.error("Error fetching bookings:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving coupons"
-    })
+      message: "An error occurred while retrieving bookings"
+    });
   }
 };
 
