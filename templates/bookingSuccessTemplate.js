@@ -179,7 +179,7 @@ const generateBookingSuccessTemplate = (booking, currency) => {
                     <div class="total">
                         Total Amount: 
                         <span>
-                        ${currency?.symbol} 
+                        ${currency} 
                         </span>
                         <span>
                         ${booking?.amount} 
