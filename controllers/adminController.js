@@ -1841,7 +1841,7 @@ const updateRoomService = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Amenity updated successfully",
+      message: "Service updated successfully",
       service: updatedRoomService,
     });
   } catch (error) {
